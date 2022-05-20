@@ -1,0 +1,51 @@
+{
+    "id0": {
+        "lat": 57.7624329,
+        "lon": 16.68509738,
+        "alt": 20,
+        "heading": "course",
+        "alt_type": "relative",
+        "speed": 4.0
+    },
+    "id1": {
+        "lat": 57.76265936,
+        "lon": 16.68561218,
+        "alt": 30,
+        "heading": "course",
+        "alt_type": "relative",
+        "speed": 4.0
+    },
+    "id2": {
+        "lat": 57.76289272,
+        "lon": 16.68520352,
+        "alt": 30,
+        "heading": "course",
+        "alt_type": "relative",
+        "speed": 4.0
+    },
+    "id3": {
+        "lat": 57.76268585,
+        "lon": 16.68459335,
+        "alt": 30,
+        "heading": "course",
+        "alt_type": "relative",
+        "speed": 4.0
+    },
+    "id4": {
+        "lat": 57.76229685,
+        "lon": 16.68505098,
+        "alt": 15,
+        "heading": "course",
+        "alt_type": "relative",
+        "speed": 4.0
+    },
+    "id5": {
+        "lat": 57.7623672,
+        "lon": 16.6858406,
+        "alt": 10,
+        "heading": "course",
+        "alt_type": "relative",
+        "speed": 4.0
+    },
+    "source_file": "Missions/Granso_LMD.plan"
+}
