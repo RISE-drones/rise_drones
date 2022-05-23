@@ -9,6 +9,7 @@ import zmq
 
 import dss.auxiliaries
 import dss.client
+from dss.auxiliaries.config import config
 
 #--------------------------------------------------------------------#
 
@@ -19,7 +20,7 @@ def _main():
   parser.add_argument('--app', type=str, required=False)
   parser.add_argument('--delStaleClients', action='store_true', help='deletes all stale clients')
   parser.add_argument('--info', action='store_true', help='crm info')
-  parser.add_argument('--ip', type=str, default='10.44.160.10', required=False)
+  parser.add_argument('--ip', type=str, default=config["default_crm_ip"], required=False)
   parser.add_argument('--list', action='store_true', help='print all clients')
   parser.add_argument('--log', type=str, default='info', help='logging threshold')
   parser.add_argument('--port', type=int, required=True)

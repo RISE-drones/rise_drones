@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 '''Minimal running example of a ZMQ REP socket.
 
-> ./_zmq_req.py --ip=127.0.0.1 & ./_zmq_rep.py
+> ./_zmq_req.py & ./_zmq_rep.py
 '''
 
 import argparse
@@ -10,6 +10,7 @@ import json
 import zmq
 
 import dss.auxiliaries
+from dss.auxiliaries.config import config
 
 
 def _print(text):
@@ -37,11 +38,11 @@ def receive_and_reply(socket):
 def _main():
   # parse command-line arguments
   parser = argparse.ArgumentParser(description='_zmq_rep.py', allow_abbrev=False)
-  parser.add_argument('--port', default='5556')
+  parser.add_argument('--port', default=config["default_crm_port"], help=f'{config["default_crm_port"]}')
   args = parser.parse_args()
 
   socket = dss.auxiliaries.zmq.Rep(zmq.Context(), port=args.port)
-  print(dss.auxiliaries.zmq.get_ip_address())
+  _print(dss.auxiliaries.zmq.get_ip_address())
 
   while socket:
     try:

@@ -7,6 +7,7 @@ import argparse
 import zmq
 
 import dss.auxiliaries
+from dss.auxiliaries.config import config
 
 
 def _print(text):
@@ -16,7 +17,7 @@ def _main():
   # parse command-line arguments
   parser = argparse.ArgumentParser(description='_zmq_rep.py', allow_abbrev=False, add_help=False)
   parser.add_argument('-h', '--help', action='help', help=argparse.SUPPRESS)
-  parser.add_argument('--ip', default='10.44.163.10')
+  parser.add_argument('--ip', default=config["default_crm_ip"], help=config["default_crm_ip"])
   parser.add_argument('--port', default=5559)
   args = parser.parse_args()
 

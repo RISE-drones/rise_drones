@@ -16,6 +16,8 @@ import sys
 import zmq
 
 import dss.auxiliaries
+from dss.auxiliaries.config import config
+
 
 def _main():
   # parse command-line arguments
@@ -31,7 +33,7 @@ def _main():
 
   context = zmq.Context()
 
-  crm = dss.auxiliaries.zmq.Req(context, '10.44.160.10', 5556)
+  crm = dss.auxiliaries.zmq.Req(context, config["default_crm_ip"], config["default_crm_port"])
   answer = crm.send_and_receive({'id': 'root', 'fcn': 'clients', 'filter': args.id})
   del crm
 

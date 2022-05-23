@@ -10,6 +10,7 @@ import traceback
 import zmq
 
 import dss.auxiliaries
+from dss.auxiliaries.config import config
 
 #--------------------------------------------------------------------#
 
@@ -549,9 +550,9 @@ def _main():
   # parse command-line arguments
   parser = argparse.ArgumentParser(description='CRM "Drone Swarm Controller"', allow_abbrev=False, add_help=False)
   parser.add_argument('-h', '--help', action='help', help=argparse.SUPPRESS)
-  parser.add_argument('--ip', type=str, default='10.44.160.10', help='public ip of the CRM server', required=False)
+  parser.add_argument('--ip', type=str, default=config["default_crm_ip"], help='public ip of the CRM server', required=False)
   parser.add_argument('--log', type=str, default='debug', help='logging threshold')
-  parser.add_argument('--port', type=int, default='5556', help='defines the port for the ctrl-reply socket', required=False)
+  parser.add_argument('--port', type=int, default=config["default_crm_port"], help='defines the port for the ctrl-reply socket', required=False)
   parser.add_argument('--stdout', action='store_true', help='enables logging to stdout')
   parser.add_argument('--virgin', action='store_true', help='defines if to start from a backup or not')
   args = parser.parse_args()

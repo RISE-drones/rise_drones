@@ -12,6 +12,7 @@ import typing
 import zmq
 
 import dss.auxiliaries.exception
+import dss.auxiliaries.config
 
 #--------------------------------------------------------------------#
 
@@ -31,36 +32,14 @@ def Context() -> zmq.Context:
 
 def get_subnet(ip: typing.Optional[str] = None, port: typing.Optional[int] = None) -> str:
   if ip:
-    if '10.44.162.' in ip:
-      return 'digmet'
-    elif '10.44.163.' in ip:
-      return 'tyra'
-    elif '10.44.171.' in ip:
-      return 'test'
-    elif '10.44.166.' in ip:
-      return 'kristoffer'
-    elif '10.44.167.' in ip:
-      return 'hanna'
-    elif '10.44.168.' in ip:
-      return 'lennart'
-    elif '10.44.169.' in ip:
-      return 'andreas'
+    for subnet in dss.auxiliaries.config.config['subnets']:
+      if dss.auxiliaries.config.config['subnets'][subnet]['ip'] in ip:
+        return subnet
 
   if port:
-    if 16200 <= port < 16300:
-      return 'digmet'
-    elif 16300 <= port < 16400:
-      return 'tyra'
-    elif 17100 <= port < 17200:
-      return 'test'
-    elif 16600 <= port < 16700:
-      return 'kristoffer'
-    elif 16700 <= port < 16800:
-      return 'hanna'
-    elif 16800 <= port < 16900:
-      return 'lennart'
-    elif 16900 <= port < 17000:
-      return 'andreas'
+    for subnet in dss.auxiliaries.config.config['subnets']:
+      if dss.auxiliaries.config.config['subnets'][subnet]['port_min'] <= port <= dss.auxiliaries.config.config['subnets'][subnet]['port_max']:
+        return subnet
 
   return ''
 
