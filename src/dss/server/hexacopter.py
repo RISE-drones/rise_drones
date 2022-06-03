@@ -16,6 +16,7 @@ import numpy as np
 from pymavlink import mavutil
 
 import dss.auxiliaries
+import dss.auxiliaries.config
 
 __author__ = 'Lennart Ochel <lennart.ochel@ri.se>, Andreas Gising <andreas.gising@ri.se>, Kristoffer Bergman <kristoffer.bergman@ri.se>, Hanna Müller <hanna.muller@ri.se>, Joel Nordahl'
 __version__ = '1.1.0'
@@ -220,47 +221,45 @@ class Hexacopter:
         self._old_channel_13 = vehicle.channels['13']
     ############################################################################
 
-    with open('DSSConfig.json', 'r', encoding='utf-8') as handle:
-      dss_config = json.load(handle)
-
     # Lock to object
     self.lock = threading.Lock()
 
-    # Read limitations from DSSConfig.json. This is relevant even though there are
-    # limitations in the autopilot. For example it can be relevant to limit
-    # accelerations when developing a velocity control application. In this case
-    # DSS can limit the application without limiting manual input from RC.
+    # Read limitations from ".config". This is relevant even though
+    # there are limitations in the autopilot. For example it can be
+    # relevant to limit accelerations when developing a velocity
+    # control application. In this case DSS can limit the application
+    # without limiting manual input from RC.
 
     # Acceleration
-    self.acc_x_max = dss_config['ACC']['acc_x_max']
-    self.acc_x_min = dss_config['ACC']['acc_x_min']
-    self.acc_y_max = dss_config['ACC']['acc_y_max']
-    self.acc_y_min = dss_config['ACC']['acc_y_min']
-    self.acc_z_max = dss_config['ACC']['acc_z_max']
-    self.acc_z_min = dss_config['ACC']['acc_z_min']
-    self.yaw_turd_max = dss_config['ACC']['yaw_turd_max']
-    self.yaw_turd_min = dss_config['ACC']['yaw_turd_min']
+    self.acc_x_max = dss.auxiliaries.config.config['ACC']['acc_x_max']
+    self.acc_x_min = dss.auxiliaries.config.config['ACC']['acc_x_min']
+    self.acc_y_max = dss.auxiliaries.config.config['ACC']['acc_y_max']
+    self.acc_y_min = dss.auxiliaries.config.config['ACC']['acc_y_min']
+    self.acc_z_max = dss.auxiliaries.config.config['ACC']['acc_z_max']
+    self.acc_z_min = dss.auxiliaries.config.config['ACC']['acc_z_min']
+    self.yaw_turd_max = dss.auxiliaries.config.config['ACC']['yaw_turd_max']
+    self.yaw_turd_min = dss.auxiliaries.config.config['ACC']['yaw_turd_min']
 
     # Velocity
-    self.vel_x_max = dss_config['VEL']['vel_x_max']
-    self.vel_x_min = dss_config['VEL']['vel_x_min']
-    self.vel_y_max = dss_config['VEL']['vel_y_max']
-    self.vel_y_min = dss_config['VEL']['vel_y_min']
-    self.vel_z_max = dss_config['VEL']['vel_z_max']
-    self.vel_z_min = dss_config['VEL']['vel_z_min']
-    self.max_yaw_rate = dss_config['VEL']['max_yaw_rate']
-    self.min_yaw_rate = dss_config['VEL']['min_yaw_rate']
+    self.vel_x_max = dss.auxiliaries.config.config['VEL']['vel_x_max']
+    self.vel_x_min = dss.auxiliaries.config.config['VEL']['vel_x_min']
+    self.vel_y_max = dss.auxiliaries.config.config['VEL']['vel_y_max']
+    self.vel_y_min = dss.auxiliaries.config.config['VEL']['vel_y_min']
+    self.vel_z_max = dss.auxiliaries.config.config['VEL']['vel_z_max']
+    self.vel_z_min = dss.auxiliaries.config.config['VEL']['vel_z_min']
+    self.max_yaw_rate = dss.auxiliaries.config.config['VEL']['max_yaw_rate']
+    self.min_yaw_rate = dss.auxiliaries.config.config['VEL']['min_yaw_rate']
 
     # Position North East Down (from launch location)
-    self.max_ned_n = dss_config['POS']['pos_ned_n_max']
-    self.min_ned_n = dss_config['POS']['pos_ned_n_min']
-    self.max_ned_e = dss_config['POS']['pos_ned_e_max']
-    self.min_ned_e = dss_config['POS']['pos_ned_e_min']
-    self.max_ned_d = dss_config['POS']['pos_ned_d_max']
-    self.min_ned_d = dss_config['POS']['pos_ned_d_min']
+    self.max_ned_n = dss.auxiliaries.config.config['POS']['pos_ned_n_max']
+    self.min_ned_n = dss.auxiliaries.config.config['POS']['pos_ned_n_min']
+    self.max_ned_e = dss.auxiliaries.config.config['POS']['pos_ned_e_max']
+    self.min_ned_e = dss.auxiliaries.config.config['POS']['pos_ned_e_min']
+    self.max_ned_d = dss.auxiliaries.config.config['POS']['pos_ned_d_max']
+    self.min_ned_d = dss.auxiliaries.config.config['POS']['pos_ned_d_min']
 
     # Max waypoint distance. Can be used to minimise risk of mistyped waypoints.
-    self.max_wp_dist = dss_config['WP']['max_wp_distance']
+    self.max_wp_dist = dss.auxiliaries.config.config['WP']['max_wp_distance']
 
     # Dictionary for data stream subscriptions (Flag, attribute name, enable/disable)-flag
     self.data_stream = {'new_input': False, 'attribute': '', 'enable': False}
