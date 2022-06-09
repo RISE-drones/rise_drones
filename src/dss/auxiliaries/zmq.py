@@ -413,14 +413,15 @@ class Pub(_Socket):
 #--------------------------------------------------------------------#
 
 class Sub(_Socket):
-  def __init__(self, context, ip, port, label=None, timeout=1000, self_id=None) -> None:
+  def __init__(self, context, ip, port, label=None, timeout=1000, self_id=None, subscribe_all=True) -> None:
     _Socket.__init__(self, context, ip, port, label, timeout, socket_type='sub', self_id=self_id)
-    self.connect()
+    self.connect(subscribe_all)
 
-  def connect(self) -> None:
+  def connect(self, subscribe_all) -> None:
     assert valid_ip(self._ip, localhost=True), f'bad ip address: {self._ip}'
     self._socket = self._context.socket(zmq.SUB)
-    self._socket.setsockopt_string(zmq.SUBSCRIBE, '')
+    if subscribe_all:
+      self._socket.setsockopt_string(zmq.SUBSCRIBE, '')
     self._socket.RCVTIMEO = self._timeout # in milliseconds
     self._socket.connect(f'tcp://{self._ip}:{self._port}')
     _logger.debug(f'{self._label} Connected to tcp://{self._ip}:{self._port} with timeout {self._timeout}')
