@@ -16,7 +16,7 @@ __copyright__ = 'Copyright (c) 2021, RISE'
 __status__ = 'development'
 
 class UsspClientApi:
-  def __init__(self, context, app_id, ussp_ip, req_port, pub_port, timeout=1000):
+  def __init__(self, context, app_id, ussp_ip, req_port, pub_port, sub_port, timeout=1000):
     self._logger = logging.getLogger(__name__)
     self._logger.info('USSP Client API')
 
@@ -24,10 +24,17 @@ class UsspClientApi:
 
     self._req_socket = dss.auxiliaries.zmq.Req(context, ussp_ip, req_port, label="USSP-API-REQ", timeout=timeout, self_id=app_id)
     self._pub_socket = dss.auxiliaries.zmq.Pub(context, ussp_ip, pub_port, label="USSP-API-PUB", self_id=app_id, bind=False)
+    self._sub_socket = dss.auxiliaries.zmq.Sub(context, ussp_ip, sub_port, timeout=int(1e8), label="USSP-API-SUB", self_id=app_id, subscribe_all=False)
 
   def __del__(self):
     self._req_socket.close()
     self._pub_socket.close()
+    self._sub_socket.close()
+
+  def receive_subscribe_data(self):
+      msg_raw = self._sub_socket.recv()
+      topic, msg = msg_raw.split(maxsplit=1)
+      return topic, msg
 
   def query_ground_height(self, lat, lon, epsg=4979):
     call = 'query ground height'
@@ -59,10 +66,13 @@ class UsspClientApi:
     answer = self._req_socket.send_and_receive_string(msg)
     return answer
 
-  def activate_plan(self, plan_id):
+  def activate_plan(self, plan_id, time_until_withdrawn):
     call = 'activate plan'
     # build message
     msg = {'request': call, 'plan ID': plan_id}
+    #Debug parameter used to trigger a plan withdrawn msg from the USSP
+    if time_until_withdrawn :
+      msg["withdraw plan"] = time_until_withdrawn
     # send and receive message
     answer = self._req_socket.send_and_receive_string(msg)
     return answer
