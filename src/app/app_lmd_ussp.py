@@ -252,7 +252,7 @@ class AppLmd():
     self.ussp.update_nrid_accuracies(self.uas_id, 4, 4, 11, 0)
     while self.alive :
       self.drone_lla_lock.acquire()
-      self.ussp.update_nrid_state(self.uas_id, self.drone_data["time"], self.drone_data["pos"].lat, self.drone_data["pos"].lon, self.drone_data["pos"].alt, height=0.0, bearing=0.0, speed=0.0, vert_speed=0.0)
+      self.ussp.update_nrid_state(self.uas_id, self.drone_data["time"], self.drone_data["pos"].lat, self.drone_data["pos"].lon, self.drone_data["pos"].alt, height=self.drone_data["pos"].alt-self.start_pos.alt, bearing=0.0, speed=0.0, vert_speed=0.0)
       self.drone_lla_lock.release()
       self.ussp.publish_nrid_msg(self.uas_id)
       time.sleep(1.0)
