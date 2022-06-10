@@ -366,7 +366,7 @@ class CRM:
 
     port = self._socket.port
 
-    subprocess.Popen(['build/sitl/bin/arducopter', '-S', '--model', '+', '--speedup', '1', '--home', '57.7624329,16.685097,35,45', '--defaults=/home/droneadmin/ardupilot/Tools/autotest/default_params/copter.parm', f'--base-port={port+56}', '-I0', '--sysid', '1'], cwd='/home/droneadmin/ardupilot/', shell=False)
+    subprocess.Popen(['build/sitl/bin/arducopter', '-S', '--model', '+', '--speedup', '1', '--home', '58.408870, 15.659209,52,45', '--defaults=/home/droneadmin/ardupilot/Tools/autotest/default_params/copter.parm', f'--base-port={port+56}', '-I0', '--sysid', '1'], cwd='/home/droneadmin/ardupilot/', shell=False)
     subprocess.Popen(['.ardupilot/bin/python3', '.ardupilot/bin/mavproxy.py', f'--master=tcp:127.0.0.1:{port+56}', f'--out=tcpin:0.0.0.0:{port+87}', f'--out=tcpin:0.0.0.0:{port+88}', '--daemon'], cwd='/home/droneadmin/ardupilot/', shell=False)
 
     dss_id = '{type}{index:03d}'.format(type='dss', index=self._nextIndex)
@@ -390,7 +390,7 @@ class CRM:
 
     # arducopter expects an interactive shell (mavproxy --daemon does not)
     #subprocess.Popen(['build/sitl/bin/arducopter', '-S', '--model', '+', '--speedup', '1', '--home', '58.533153,15.580979,35,45', '--slave', '0', '--defaults=/home/droneadmin/ardupilot/Tools/autotest/default_params/copter.parm', f'--base-port={port+51}', '-I0', '--sysid', '1'], cwd='/home/droneadmin/ardupilot/', shell=False)
-    subprocess.Popen(['build/sitl/bin/arducopter', '-S', '--model', '+', '--speedup', '1', '--home', '58.408870, 15.659209,52,45', '--defaults=/home/droneadmin/ardupilot/Tools/autotest/default_params/copter.parm', f'--base-port={port+51}', '-I0', '--sysid', '1'], cwd='/home/droneadmin/ardupilot/', shell=False)
+    subprocess.Popen(['build/sitl/bin/arducopter', '-S', '--model', '+', '--speedup', '1', '--home', '58.533153,15.580979,35,45', '--defaults=/home/droneadmin/ardupilot/Tools/autotest/default_params/copter.parm', f'--base-port={port+51}', '-I0', '--sysid', '1'], cwd='/home/droneadmin/ardupilot/', shell=False)
     subprocess.Popen(['.ardupilot/bin/python3', '.ardupilot/bin/mavproxy.py', f'--master=tcp:127.0.0.1:{port+51}', f'--out=tcpin:0.0.0.0:{port+81}', f'--out=tcpin:0.0.0.0:{port+82}', '--daemon'], cwd='/home/droneadmin/ardupilot/', shell=False)
 
     #subprocess.Popen(['build/sitl/bin/arducopter', '-S', '--model', '+', '--speedup', '1', '--home', '58.533153,15.580979,35,45', '--slave', '0', '--defaults=/home/droneadmin/ardupilot/Tools/autotest/default_params/copter.parm', f'--base-port={port+61}', '-I1', '--sysid', '2'], cwd='/home/droneadmin/ardupilot/', shell=False)
