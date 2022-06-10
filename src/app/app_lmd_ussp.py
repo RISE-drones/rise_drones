@@ -81,8 +81,8 @@ class AppLmd():
     # Missions
     self.missions = []
     #geofence parameters
-    self.delta_r_max = 120.0
-    self.height_max = 50.0
+    self.delta_r_max = 2000.0
+    self.height_max = 200.0
     self.height_min = 8.0
     #take-off height
     self.takeoff_height = 12.0
