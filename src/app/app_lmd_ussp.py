@@ -8,11 +8,11 @@ Input parameters
 2. Start WP - where to start
 
 This application
-1. Connects to the CRM
+1. Connects to the CRM & USSP
 2. Asks for an available drone resource with correct capability
-3. Loads the mission and pass it to the drone
-4. Executes the mission
-5. Finish the mission by returning to a return location
+3. Read and parse the mission
+4. Executes the mission (pickup, drop off)
+5. Finish the mission by landing at the return location
 '''
 
 import argparse
@@ -81,20 +81,18 @@ class AppLmd():
     # Missions
     self.missions = []
     #geofence parameters
-    self.delta_r_max = 2000.0
-    self.height_max = 200.0
-    self.height_min = 8.0
-    #take-off height
-    self.takeoff_height = 12.0
+    self.delta_r_max = dss.auxiliaries.config.config['app_lmd_ussp']['delta_r_max']
+    self.height_max = dss.auxiliaries.config.config['app_lmd_ussp']['height_max']
+    self.height_min = dss.auxiliaries.config.config['app_lmd_ussp']['height_min']
     #speed parameters
-    self.horizontal_speed = 8.0
+    self.horizontal_speed = dss.auxiliaries.config.config['app_lmd_ussp']['horizontal_speed']
     #
     self.drone_data = {"pos": Waypoint(), "time": 0.0}
     self.start_pos = Waypoint()
     self.start_pos_received = False
     self.drone_lla_lock = threading.Lock()
     self.uas_id = None
-    self.operator_id = dss.auxiliaries.config.config['operator ID']
+    self.operator_id = dss.auxiliaries.config.config['app_lmd_ussp']['operator_id']
 
     # The application sockets
     # Use ports depending on subnet used to pass RISE firewall
@@ -122,9 +120,14 @@ class AppLmd():
     # All nack reasons raises exception, registration is successful
     _logger.info('App %s listening on %s:%s', self.crm.app_id, self._app_socket.ip, self._app_socket.port)
     _logger.info('App_lmd registered with CRM: %s', self.crm.app_id)
-    #USSP
+    #USSP parameters
+    self.ussp_ip = dss.auxiliaries.config.config['app_lmd_ussp']['ussp_ip']
+    self.ussp_req_port = dss.auxiliaries.config.config['app_lmd_ussp']['ussp_req_port']
+    self.ussp_pub_port = dss.auxiliaries.config.config['app_lmd_ussp']['ussp_pub_port']
+    self.ussp_sub_port = dss.auxiliaries.config.config['app_lmd_ussp']['ussp_sub_port']
+    _logger.info('App')
     self.ussp = dss.client.UsspClientLib(app_id, _context)
-    self.ussp.connect(ussp_ip="localhost", req_port=5555, pub_port=5556, sub_port=5557)
+    self.ussp.connect(self.ussp_ip, self.ussp_req_port, self.ussp_pub_port, self.ussp_sub_port)
 
 
 
@@ -190,7 +193,7 @@ class AppLmd():
     return answer
 
 #--------------------------------------------------------------------#
-# Applicaiton reply: 'get_info'
+# Application reply: 'get_info'
   def _request_get_info(self, msg):
     answer = dss.auxiliaries.zmq.ack(msg['fcn'])
     answer['id'] = self.crm.app_id
@@ -198,7 +201,7 @@ class AppLmd():
     answer['data_pub_port'] = None
     return answer
 #--------------------------------------------------------------------#
-# Applicaiton reply: 'clearance_landing'
+# Application reply: 'clearance_landing'
   def _request_clearance_landing(self, msg):
     self.clearance_landing = True
     answer = dss.auxiliaries.zmq.ack(msg['fcn'])
@@ -282,11 +285,12 @@ class AppLmd():
       wp_mission = self.ussp.transform_plan(plan)
       #save mission
       mission = {}
-      mission["takeoff_height"] = plan[1]["position"][2] - plan[0]["position"][2]
+      mission["takeoff_height"] = min(plan[1]["position"][2] - plan[0]["position"][2], 30.0)
       mission["wp_mission"] = wp_mission
       mission["takeoff_time"] = datetime.datetime.fromisoformat(plan[0]["time"])
       mission["plan ID"] = plan_id
       mission["type"] = wp_type
+      print(f"Plan from USSP: {plan}")
       print(f"takeoff_height: {mission['takeoff_height']}, wp_mission : {wp_mission}")
       self.missions.append(mission)
       #Update takeoff time
@@ -373,12 +377,13 @@ class AppLmd():
     nrid_thread.start()
     for mission in self.missions:
       self.initialize_mission(mission["wp_mission"], reset_geofence)
-      #Launch drone
-      while datetime.datetime.utcnow() + datetime.timedelta(seconds=10) < mission["takeoff_time"]:
-        _logger.info("Waiting for takeoff")
-        time.sleep(0.5)
+      #Wait for takeoff time
+      #while datetime.datetime.utcnow() + datetime.timedelta(seconds=10) < mission["takeoff_time"]:
+      #  _logger.info(f"Waiting for takeoff, time remaining: {mission['takeoff_time']-datetime.datetime.utcnow()}")
+      #  time.sleep(0.5)
       # activate mission
       self.ussp.activate_plan(mission["plan ID"])
+      # Launch drone
       self.launch_drone(mission["takeoff_height"], reset_dss_srtl)
       # Execute missions
       self.execute_mission()

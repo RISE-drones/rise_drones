@@ -85,13 +85,18 @@ class UsspClientLib:
     '''
     wp_id = 0
     wp_mission = {}
-    for idx in range(2, len(plan)-1):
+    cruise_height = plan[1]["position"][2] - plan[0]["position"][2]
+    if cruise_height > 30.0 :
+      start_idx = 1
+    else :
+      start_idx = 2
+    for idx in range(start_idx, len(plan)-1):
         id_str =  "id%d" % wp_id
         position = plan[idx]["position"]
         prev_position = plan[idx-1]["position"]
         (_, _, _, ds, _, _) = get_3d_distance(prev_position, position)
         dt = datetime.datetime.fromisoformat(plan[idx]["time"]) - datetime.datetime.fromisoformat(plan[idx-1]["time"])
-        horizontal_speed = ds/dt.total_seconds()
+        horizontal_speed = max(1.0, ds/dt.total_seconds())
         wp_mission[id_str] = {
           "lat" : position[1], "lon": position[0], "alt": position[2], "alt_type": "amsl", "heading": "course", "speed": horizontal_speed
         }
@@ -149,7 +154,7 @@ class UsspClientLib:
                "preferred rate of ascend": ascend_rate,
                "maximum rate of ascend": 1.2*ascend_rate,
                "preferred rate of descend": descend_rate,
-               "maximum rate of ascend": 1.2*descend_rate}
+               "maximum rate of descend": 1.2*descend_rate}
     answer = self._ussp_client.request_plan(request)
     if "reply" not in answer \
       or answer["reply"] == "error":
