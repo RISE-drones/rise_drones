@@ -48,21 +48,21 @@ jobs:
         error="${error//$'\r'/'%0D'}"
         [ -z ${error} ] || error="### Errors :rotating_light:%0A\`\`\`%0A"${error}"%0A\`\`\`"
         echo "::set-output name=body::$error"
-    - id: pylint-warnings
-      name: Prepare pylint warnings
-      if: ${{ github.event_name == 'pull_request' && failure() && steps.pylint.outcome == 'failure' }}
-      run: |
-        touch pylint-warning.log
-        for changed_file in ${{ steps.changed-files.outputs.all }}; do
-          grep -e "${changed_file}" pylint.log | grep -e '^W[0-9]\+' >> pylint-warning.log || true
-        done
-        warning="$(head -n15 pylint-warning.log)"
-        [ -z ${warning} ] && warning="$(grep -e '^W[0-9]\+' -m 15 pylint.log)"
-        warning="${warning//'%'/'%25'}"
-        warning="${warning//$'\n'/'%0A'}"
-        warning="${warning//$'\r'/'%0D'}"
-        [ -z ${warning} ] || warning="### Warnings :warning:%0A\`\`\`%0A"${warning}"%0A\`\`\`"
-        echo "::set-output name=body::$warning"
+    # - id: pylint-warnings
+    #   name: Prepare pylint warnings
+    #   if: ${{ github.event_name == 'pull_request' && failure() && steps.pylint.outcome == 'failure' }}
+    #   run: |
+    #     touch pylint-warning.log
+    #     for changed_file in ${{ steps.changed-files.outputs.all }}; do
+    #       grep -e "${changed_file}" pylint.log | grep -e '^W[0-9]\+' >> pylint-warning.log || true
+    #     done
+    #     warning="$(head -n15 pylint-warning.log)"
+    #     [ -z ${warning} ] && warning="$(grep -e '^W[0-9]\+' -m 15 pylint.log)"
+    #     warning="${warning//'%'/'%25'}"
+    #     warning="${warning//$'\n'/'%0A'}"
+    #     warning="${warning//$'\r'/'%0D'}"
+    #     [ -z ${warning} ] || warning="### Warnings :warning:%0A\`\`\`%0A"${warning}"%0A\`\`\`"
+    #     echo "::set-output name=body::$warning"
     - id: pylint-notifications
       name: Prepare pylint notifications
       if: ${{ github.event_name == 'pull_request' && failure() && steps.pylint.outcome == 'failure' }}
