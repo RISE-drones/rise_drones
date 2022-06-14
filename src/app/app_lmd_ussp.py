@@ -290,7 +290,6 @@ class AppLmd():
       mission["takeoff_time"] = datetime.datetime.fromisoformat(plan[0]["time"])
       mission["plan ID"] = plan_id
       mission["type"] = wp_type
-      print(f"Plan from USSP: {plan}")
       print(f"takeoff_height: {mission['takeoff_height']}, wp_mission : {wp_mission}")
       self.missions.append(mission)
       #Update takeoff time
@@ -378,9 +377,9 @@ class AppLmd():
     for mission in self.missions:
       self.initialize_mission(mission["wp_mission"], reset_geofence)
       #Wait for takeoff time
-      #while datetime.datetime.utcnow() + datetime.timedelta(seconds=10) < mission["takeoff_time"]:
-      #  _logger.info(f"Waiting for takeoff, time remaining: {mission['takeoff_time']-datetime.datetime.utcnow()}")
-      #  time.sleep(0.5)
+      while datetime.datetime.utcnow() + datetime.timedelta(seconds=10) < mission["takeoff_time"]:
+        _logger.info(f"Waiting for takeoff, time remaining: {mission['takeoff_time']-datetime.datetime.utcnow()}")
+        time.sleep(0.5)
       # activate mission
       self.ussp.activate_plan(mission["plan ID"])
       # Launch drone
