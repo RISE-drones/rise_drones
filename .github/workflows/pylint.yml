@@ -78,28 +78,28 @@ jobs:
         notifications="${notifications//$'\r'/'%0D'}"
         [ -z ${notifications} ] || notifications="### Refactoring and conventions :bulb:%0A\`\`\`%0A"${notifications}"%0A\`\`\`"
         echo "::set-output name=body::$notifications"
-    - id: pylint-rating
-      name: Prepare pylint rating
-      if: ${{ github.event_name == 'pull_request' && always() }}
-      run: |
-        rating="$(tail pylint.log | grep 'Your code has been rated')"
-        rating="${rating//'%'/'%25'}"
-        rating="${rating//$'\n'/'%0A'}"
-        rating="${rating//$'\r'/'%0D'}"
-        echo "::set-output name=body::$rating"
-    - name: Report pylint output
-      if: ${{ github.event_name == 'pull_request' && failure() && steps.pylint.outcome == 'failure' }}
-      uses: peter-evans/create-or-update-comment@v1
-      with:
-        issue-number: ${{github.event.pull_request.number}}
-        body: |
-          ${{ steps.pylint-errors.outputs.body }}
+    # - id: pylint-rating
+    #   name: Prepare pylint rating
+    #   if: ${{ github.event_name == 'pull_request' && always() }}
+    #   run: |
+    #     rating="$(tail pylint.log | grep 'Your code has been rated')"
+    #     rating="${rating//'%'/'%25'}"
+    #     rating="${rating//$'\n'/'%0A'}"
+    #     rating="${rating//$'\r'/'%0D'}"
+    #     echo "::set-output name=body::$rating"
+    # - name: Report pylint output
+    #   if: ${{ github.event_name == 'pull_request' && failure() && steps.pylint.outcome == 'failure' }}
+    #   uses: peter-evans/create-or-update-comment@v1
+    #   with:
+    #     issue-number: ${{github.event.pull_request.number}}
+    #     body: |
+    #       ${{ steps.pylint-errors.outputs.body }}
 
-          ${{ steps.pylint-warnings.outputs.body }}
+    #       ${{ steps.pylint-warnings.outputs.body }}
 
-          ${{ steps.pylint-notifications.outputs.body }}
+    #       ${{ steps.pylint-notifications.outputs.body }}
 
-          ${{ steps.pylint-rating.outputs.body }}
+    #       ${{ steps.pylint-rating.outputs.body }}
     - id: pytest
       name: Test the code
       run: |
