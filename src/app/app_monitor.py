@@ -6,7 +6,7 @@ import threading
 import time
 import traceback
 import sys
-
+import json
 import zmq
 
 
@@ -43,20 +43,36 @@ class Monitor():
     if auto_ip != app_ip:
       _logger.warning("Automatic get ip function and given ip does not agree: %s vs %s", auto_ip, app_ip)
 
-    # all sockets
-    self._app_socket = dss.auxiliaries.zmq.Rep(_context, label='app', min_port=self.crm.port, max_port=self.crm.port+50) #Rep: ANY -> APP
+      # The application sockets
+    # Use ports depending on subnet used to pass RISE firewall
+    # Rep: ANY -> APP
+    self._app_socket = dss.auxiliaries.zmq.Rep(_context, label='app', min_port=self.crm.port, max_port=self.crm.port+50)
+    # Pub: APP -> ANY
+    self._info_socket = dss.auxiliaries.zmq.Pub(_context, label='info', min_port=self.crm.port, max_port=self.crm.port+50)
 
+    # Start the app reply thread
+    self._app_reply_thread = threading.Thread(target=self._main_app_reply, daemon=True)
+    self._app_reply_thread.start()
+
+    # Supported commands from ANY to APP
+    self._commands = {'get_info':         {'request': self._request_get_info},
+                      'get_drone_data':   {'request': self._request_get_drone_data}}
     # Register with CRM (self.crm.app_id is first available after the register call)
     _ = self.crm.register(self._app_ip, self._app_socket.port)
+
+    # Update socket labels with received id
+    self._app_socket.add_id_to_label(self.crm.app_id)
+    self._info_socket.add_id_to_label(self.crm.app_id)
 
     # All nack reasons raises exception, registreation is successful
     _logger.info('App %s listening on %s:%s', self.crm.app_id, self._app_socket.ip, self._app_socket.port)
     _logger.info(f'App_monitor registered with CRM: {self.crm.app_id}')
 
-    # Update socket labels with received id
-    self._app_socket.add_id_to_label(self.crm.app_id)
-
+    # Clients that are connected to the CRM
     self.clients = []
+    #Store the data received from the drones
+    self.drone_data = {}
+    self.drone_data_lock = threading.Lock()
 
 #--------------------------------------------------------------------#
   @property
@@ -81,6 +97,43 @@ class Monitor():
       self._app_socket.close()
       _logger.info("APP socket closed")
     _logger.debug('~ THE END ~')
+
+# Application reply thread
+  def _main_app_reply(self):
+    _logger.info('Reply socket is listening on: %s', self._app_socket.port)
+    while self.alive:
+      try:
+        msg = self._app_socket.recv_json()
+        msg = json.loads(msg)
+        fcn = msg['fcn'] if 'fcn' in msg else ''
+
+        if fcn in self._commands:
+          request = self._commands[fcn]['request']
+          answer = request(msg)
+        else :
+          answer = dss.auxiliaries.zmq.nack(msg['fcn'], 'Request not supported')
+        answer = json.dumps(answer)
+        self._app_socket.send_json(answer)
+      except:
+        pass
+    self._app_socket.close()
+    _logger.info("Reply socket closed, thread exit")
+
+#--------------------------------------------------------------------#
+# Application reply functions
+  def _request_get_info(self, msg):
+    answer = dss.auxiliaries.zmq.ack(msg['fcn'])
+    answer['id'] = self.crm.app_id
+    answer['info_pub_port'] = self._info_socket.port
+    answer['data_pub_port'] = None
+    return answer
+
+  def _request_get_drone_data(self, msg):
+    answer = dss.auxiliaries.zmq.ack(msg['fcn'])
+    self.drone_data_lock.acquire()
+    answer['data'] = self.drone_data
+    self.drone_data_lock.release()
+    return answer
 
 #--------------------------------------------------------------------#
   def client_in_list(self, client_id, clients_list) -> bool:
@@ -128,21 +181,24 @@ class Monitor():
       try:
         (topic, msg) = sub_socket.recv()
         if topic == "LLA":
-          print(
-          id + ":---> lat: " + '{0:.7f}'.format(msg['lat']) +
-          ", long: " + '{0:.7f}'.format(msg['lon']) +
-          ", alt: " + '{0:.2f}'.format(msg['alt']) +
-          ", heading: " + '{0:.1f}'.format(msg['heading']) +
-          ", agl: " + '{0:.2f}'.format(msg['agl']) + "\r")
+          self.drone_data_lock.acquire()
+          self.drone_data[id] = msg
+          self.drone_data_lock.release()
         else:
           print("Topic not recognized on info link: ", (topic, msg), '\r')
       except:
         pass
-
+    #Remove the drone from the map
+    self.drone_data_lock.acquire()
+    try :
+      self.drone_data.pop(id)
+    except KeyError :
+      _logger.info("No data received from client with ID %s" % id)
+    self.drone_data_lock.release()
     sub_socket.unsubscribe('LLA')
     sub_socket.close()
     req_socket.close()
-    _logger.info("Stopped thread and closed socket for client: %s", id)
+    _logger.info("Stopped thread and closed socket for client: %s" % id)
 
 #--------------------------------------------------------------------#
   # Call the DSS reply socket using the req_socket to enable the LLA-stream
