@@ -259,7 +259,7 @@ class Hexacopter:
     self.min_ned_d = config['DSS']['POS']['pos_ned_d_min']
 
     # Max waypoint distance. Can be used to minimise risk of mistyped waypoints.
-    self.max_wp_dist = config['WP']['max_wp_distance']
+    self.max_wp_dist = config['DSS']['WP']['max_wp_distance']
 
     # Dictionary for data stream subscriptions (Flag, attribute name, enable/disable)-flag
     self.data_stream = {'new_input': False, 'attribute': '', 'enable': False}
