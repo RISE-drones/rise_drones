@@ -24,14 +24,14 @@ Central Resource Manager (CRM) is a resource manager that runs in the network. T
 
 2. Install SITL - ardupilot
 
-> git clone git@github.com:ArduPilot/ardupilot.git
-> git submodule update --init --recursive
-> python3 -m venv .ardupilot
-> pip3 install -r requirements.txt
-> Modify ardupilot/Tools/autotest/locations.txt
+> git clone git@github.com:ArduPilot/ardupilot.git <br/>
+> git submodule update --init --recursive <br/>
+> python3 -m venv .ardupilot <br/>
+> pip3 install -r requirements.txt <br/>
+> Modify ardupilot/Tools/autotest/locations.txt <br/>
 
 ## Contributing
-If you would want to contribute to RISE drone system please take a look at [the guide for contributing]() to find out more about the guidelines on how to proceed.
+If you would want to contribute to RISE drone system please take a look at [the guide for contributing](contributing.md) to find out more about the guidelines on how to proceed.
 
 ## License
 RISE drone system is realeased under the [BSD 3-Clause License](https://opensource.org/licenses/BSD-3-Clause)
