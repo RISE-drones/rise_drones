@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+from concurrent.futures import thread
 import logging
 import threading
 import time
@@ -12,6 +13,7 @@ import zmq
 
 import dss.auxiliaries
 import dss.client
+from mqtt_agent.mqtt_agent import MqttAgent
 
 #--------------------------------------------------------------------#
 
@@ -27,7 +29,7 @@ _context = zmq.Context()
 
 #--------------------------------------------------------------------#
 class Monitor():
-  def __init__(self, app_ip, app_id, crm):
+  def __init__(self, app_ip, app_id, crm, mqtt_agent):
     # Import the client lib
     dss.client.Client.__init__(self, timeout=2, exception_handler=None, context=_context)
 
@@ -73,6 +75,8 @@ class Monitor():
     #Store the data received from the drones
     self.drone_data = {}
     self.drone_data_lock = threading.Lock()
+    self.mqtt_agent = mqtt_agent
+    self._mqtt_threads = {}
 
 #--------------------------------------------------------------------#
   @property
@@ -157,6 +161,32 @@ class Monitor():
     self._info_thread = threading.Thread(target=self._subscriber_thread, args=(client,))
     self._info_thread.start()
 
+  def setup_mqtt_client(self, client):
+    self._mqtt_threads[client['id']] = threading.Thread(target=self._mqtt_client, args=(client,))
+    self._mqtt_threads[client['id']].start()
+# MQTT-thread. Connect an agent to WARA-PS core system and report position
+  def _mqtt_client(self, client):
+    drone_id = client['id']
+    drone_name = "RISE-" + drone_id
+    drone_type = "hexacopter"
+    sim_real = "simulated"
+    mqtt_agent = MqttAgent(drone_name, drone_type, sim_real)
+    # Wait until position has been streamed
+    time.sleep(2.0)
+    rate: float = 1.0 / mqtt_agent.logic.rate #1.0
+    while self.client_in_list(drone_id, self.clients):
+      self.drone_data_lock.acquire()
+      mqtt_agent.set_lla(self.drone_data[drone_id]['lat'], self.drone_data[drone_id]['lon'], self.drone_data[drone_id]['alt'])
+      self.drone_data_lock.release()
+      mqtt_agent.send_heartbeat()
+      mqtt_agent.send_sensor_info()
+      mqtt_agent.send_position()
+      mqtt_agent.send_speed()
+      mqtt_agent.send_course()
+      mqtt_agent.send_heading()
+      mqtt_agent.send_direct_execution_info()
+      time.sleep(rate)
+
 #--------------------------------------------------------------------#
   # An subscribe thread. One per client will be launched. Thread is killed when client is removed from list
   def _subscriber_thread(self, client):
@@ -176,6 +206,9 @@ class Monitor():
     # Create subscription socket and start listening thread
     sub_socket = dss.auxiliaries.zmq.Sub(_context, ip, sub_port, id)
     sub_socket.subscribe('LLA')
+
+    if self.mqtt_agent :
+      self.setup_mqtt_client(client)
 
     while self.client_in_list(id, self.clients):
       try:
@@ -275,6 +308,7 @@ def _main():
   parser.add_argument('--id', type=str, default=None, help='id of the app_monitor instance provided by crm')
   parser.add_argument('--crm', type=str, help='<ip>:<port> of crm', required=True)
   parser.add_argument('--app_ip', type=str, help='ip of the app', required=True)
+  parser.add_argument('--mqtt_agent', action='store_true', help='enable MQTT sensor reporting (level 1 agent) to WARA-PS core system')
   parser.add_argument('--log', type=str, default='debug', help='logging threshold')
   parser.add_argument('--stdout', action='store_true', help='enables logging to stdout')
   args = parser.parse_args()
@@ -286,7 +320,7 @@ def _main():
 
   # Create the monitor class
   try:
-    app = Monitor(args.app_ip, args.id, args.crm)
+    app = Monitor(args.app_ip, args.id, args.crm, args.mqtt_agent)
   except dss.auxiliaries.exception.NoAnswer:
     _logger.error('Failed to instantiate application: Probably the CRM couldn\'t be reached')
     sys.exit()
