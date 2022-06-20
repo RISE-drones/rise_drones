@@ -72,6 +72,7 @@ class Monitor():
 
     # Clients that are connected to the CRM
     self.clients = []
+    self._info_threads = {}
     #Store the data received from the drones
     self.drone_data = {}
     self.drone_data_lock = threading.Lock()
@@ -114,7 +115,7 @@ class Monitor():
         if fcn in self._commands:
           request = self._commands[fcn]['request']
           answer = request(msg)
-        else :
+        else:
           answer = dss.auxiliaries.zmq.nack(msg['fcn'], 'Request not supported')
         answer = json.dumps(answer)
         self._app_socket.send_json(answer)
@@ -158,8 +159,8 @@ class Monitor():
 
 #--------------------------------------------------------------------#
   def setup_client(self, client):
-    self._info_thread = threading.Thread(target=self._subscriber_thread, args=(client,))
-    self._info_thread.start()
+    self._info_threads[client['id']] = threading.Thread(target=self._subscriber_thread, args=(client,))
+    self._info_threads[client['id']].start()
 
   def setup_mqtt_client(self, client):
     self._mqtt_threads[client['id']] = threading.Thread(target=self._mqtt_client, args=(client,))
@@ -176,7 +177,10 @@ class Monitor():
     rate: float = 1.0 / mqtt_agent.logic.rate #1.0
     while self.client_in_list(drone_id, self.clients):
       self.drone_data_lock.acquire()
-      mqtt_agent.set_lla(self.drone_data[drone_id]['lat'], self.drone_data[drone_id]['lon'], self.drone_data[drone_id]['alt'])
+      try:
+        mqtt_agent.set_lla(self.drone_data[drone_id]['lat'], self.drone_data[drone_id]['lon'], self.drone_data[drone_id]['alt'])
+      except KeyError:
+        _logger.warning("No data received from drone with with ID %s" % drone_id)
       self.drone_data_lock.release()
       mqtt_agent.send_heartbeat()
       mqtt_agent.send_sensor_info()
@@ -192,11 +196,11 @@ class Monitor():
   def _subscriber_thread(self, client):
     ip = client['ip']
     port = client['port']
-    id = client['id']
+    drone_id = client['id']
     # print("Debug: New client ip and port: ", ip, port)
 
     # Connect the Request socket to enable the LLA stream
-    req_socket = dss.auxiliaries.zmq.Req(_context, ip, port, label=id)
+    req_socket = dss.auxiliaries.zmq.Req(_context, ip, port, label=drone_id)
     # Enable LLA stream
     self.enable_lla_stream(req_socket)
     # Get info port from DSS
@@ -204,18 +208,18 @@ class Monitor():
     # print("Info pub port: ", sub_port)
 
     # Create subscription socket and start listening thread
-    sub_socket = dss.auxiliaries.zmq.Sub(_context, ip, sub_port, id)
+    sub_socket = dss.auxiliaries.zmq.Sub(_context, ip, sub_port, drone_id)
     sub_socket.subscribe('LLA')
 
-    if self.mqtt_agent :
+    if self.mqtt_agent:
       self.setup_mqtt_client(client)
 
-    while self.client_in_list(id, self.clients):
+    while self.client_in_list(drone_id, self.clients):
       try:
         (topic, msg) = sub_socket.recv()
         if topic == "LLA":
           self.drone_data_lock.acquire()
-          self.drone_data[id] = msg
+          self.drone_data[drone_id] = msg
           self.drone_data_lock.release()
         else:
           print("Topic not recognized on info link: ", (topic, msg), '\r')
@@ -224,14 +228,14 @@ class Monitor():
     #Remove the drone from the map
     self.drone_data_lock.acquire()
     try :
-      self.drone_data.pop(id)
+      self.drone_data.pop(drone_id)
     except KeyError :
-      _logger.info("No data received from client with ID %s" % id)
+      _logger.info("No data received from client with ID %s" % drone_id)
     self.drone_data_lock.release()
     sub_socket.unsubscribe('LLA')
     sub_socket.close()
     req_socket.close()
-    _logger.info("Stopped thread and closed socket for client: %s" % id)
+    _logger.info("Stopped thread and closed socket for client: %s" % drone_id)
 
 #--------------------------------------------------------------------#
   # Call the DSS reply socket using the req_socket to enable the LLA-stream
@@ -243,8 +247,6 @@ class Monitor():
     answer = socket.send_and_receive(msg)
     if not dss.auxiliaries.zmq.is_ack(answer):
       _logger.error('data_stream error: %s', answer)
-
-    # TODO, return bool?
 
 #--------------------------------------------------------------------#
   # Call the reply socket of the DSS to obtain the publish ports used

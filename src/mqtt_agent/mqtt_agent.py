@@ -1,8 +1,9 @@
-from mqtt_agent.classes import Logic, MqttClient, NavData
 import json
 import ssl
 import time
 import traceback
+from mqtt_agent.classes import Logic, MqttClient, NavData
+
 
 
 class MqttAgent:
@@ -39,23 +40,23 @@ class MqttAgent:
     self.mqtt_client.client.loop_start()
 
   def publish(self, topic, msg):
-    result = self.mqtt_client.client.publish(topic, msg)
+    _ = self.mqtt_client.client.publish(topic, msg)
 
   def disconnect(self):
     self.mqtt_client.client.disconnect()
     self.mqtt_client.client.loop_stop()
 
   # Callback function for PAHO
-  def on_connect(self, clinet, userdata, flags, rc):
+  def on_connect(self, clinet, userdata, flags, r_c):
     try:
-      if rc == 0:
+      if r_c == 0:
         print(f"Connected to MQTT Broker: {self.mqtt_client.broker}:{self.mqtt_client.port}")
         self.mqtt_client.client.subscribe(f"{self.mqtt_client.base_topic}/exec/command")
-        print(f"Subcribing to {self.mqtt_client.base_topic}/exec/command")
+        print(f"Subscribing to {self.mqtt_client.base_topic}/exec/command")
       else:
-        print(f"Error to connect : {rc}")
+        print(f"Error to connect : {r_c}")
     except Exception as exc:
-        print(traceback.format_exc())
+      print(traceback.format_exc())
 
   # Callback function for PAHO
   def on_message(self, client, userdata, msg):
@@ -92,7 +93,7 @@ class MqttAgent:
         }
 
       elif msg_json["command"] == "signal-task":
-        print("RECIVED COMMAND 'signal-task'")
+        print("RECEIVED COMMAND 'signal-task'")
         signal = msg_json["signal"]
         signal_task_uuid = msg_json["task-uuid"]
         com_uuid = msg_json["com-uuid"]
@@ -121,14 +122,14 @@ class MqttAgent:
         print(f"SENT RESPONSE! : {msg_res_str}")
 
     except Exception as e:
-        print(traceback.format_exc())
+      print(traceback.format_exc())
 
 
   # Callback function for PAHO
-  def on_disconnect(self, client, userdata, rc):
-    print(f"Client Got Disconnected from the broker with code {rc}")
-    if rc == 5:
-      print("No (or Wrong) Credentials, Edit in 'secrets.py'")
+  def on_disconnect(self, client, userdata, r_c):
+    print(f"Client Got Disconnected from the broker with code {r_c}")
+    if r_c == 5:
+      print("No (or Wrong) Credentials, Edit username and password")
 
   def send_heartbeat(self):
     json_msg = {
@@ -143,24 +144,24 @@ class MqttAgent:
     }
     str_msg = json.dumps(json_msg)
     self.publish(
-        f"{self.mqtt_client.base_topic}/heartbeat", str_msg)
+      f"{self.mqtt_client.base_topic}/heartbeat", str_msg)
 
   def send_sensor_info(self):
     json_msg = {
-        "name": self.logic.name,
-        "rate": self.logic.rate,
-        "sensor-data-provided": [
-          "position",
-          "speed",
-          "course",
-          "heading",
-        ],
-        "stamp": time.time(),
-        "type": "SensorInfo"
+      "name": self.logic.name,
+      "rate": self.logic.rate,
+      "sensor-data-provided": [
+        "position",
+        "speed",
+        "course",
+        "heading",
+      ],
+      "stamp": time.time(),
+      "type": "SensorInfo"
     }
     str_msg = json.dumps(json_msg)
     self.publish(
-        f"{self.mqtt_client.base_topic}/sensor_info", str_msg)
+      f"{self.mqtt_client.base_topic}/sensor_info", str_msg)
 
   def send_position(self):
     json_msg = {
@@ -206,12 +207,12 @@ class MqttAgent:
   def set_course(self, course: float) -> None:
     self.nav_data.course = course
 
-  def set_lla(self, lat:float, lon:float, alt:float) -> None:
+  def set_lla(self, lat: float, lon: float, alt: float) -> None:
     self.nav_data.lat = lat
     self.nav_data.lon = lon
     self.nav_data.alt = alt
 
-  def is_task_supported(self,task: json) -> bool:
+  def is_task_supported(self, task: json) -> bool:
     """Checks if the task is supported by the agent"""
     name: str = task["name"]
     task_supported: bool = False
