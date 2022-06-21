@@ -4,7 +4,10 @@ import time
 import traceback
 from mqtt_agent.classes import Logic, MqttClient, NavData
 
-
+'''
+This code is used to create an MQTT agent to the WARA-PS core system. It is based on the
+core system API specification v0.7 https://wasp-sweden.org/research/research-arenas/wara-ps-public-safety/
+'''
 
 class MqttAgent:
   def __init__(self, name, drone_type, sim_real) -> None:
