@@ -15,13 +15,13 @@ import dss.client
 
 __author__ = 'Lennart Ochel <lennart.ochel@ri.se>, Andreas Gising <andreas.gising@ri.se>, Kristoffer Bergman <kristoffer.bergman@ri.se>, Hanna Müller <hanna.muller@ri.se>, Joel Nordahl'
 __version__ = '1.1.0'
-__copyright__ = 'Copyright (c) 2019-2021, RISE'
+__copyright__ = 'Copyright (c) 2019-2022, RISE'
 __status__ = 'development'
 
 class Server:
   '''Drone Safety Service Server - new implementation'''
 
-  def __init__(self, dss_ip, dss_id='', drone: str='', baud=921600, with_gcs=False, gcs_address=None, rangefinder=False, autogain=False, midstick_check=True, clearance_check=True, photo=False, crm: str='', description='crm_dss', die_gracefully: bool=False):
+  def __init__(self, dss_ip, dss_id='', drone: str='', baud=921600, with_gcs=False, gcs_address=None, rangefinder=False, autogain=False, midstick_check=True, clearance_check=True, photo=False, crm: str='', description='crm_dss', die_gracefully: bool=False, network_log=False):
     if die_gracefully:
       # source: https://stackoverflow.com/a/31464349
       import signal
@@ -85,6 +85,10 @@ class Server:
     if photo:
       self._photo = dss.server.photo.Client(self._zmq_context, config['DSS']['PhotoClient'])
       self._logger.info('Connecting to photo client on %s... done', config['DSS']['PhotoClient'])
+
+    if network_log:
+      self._modem = Modem("/dev/ttyUSB3")
+
 
     # all attributes are disabled by default
     self._pub_attributes = {'ATT':                   {'enabled': False, 'name': 'attitude'},
@@ -168,6 +172,10 @@ class Server:
     # start glana thread
     glana_thread = threading.Thread(target=self._main_glana, daemon=True)
     glana_thread.start()
+
+    if network_log:
+      network_thread = threading.Tread(target=self._main_network_log, daemon=True)
+      network_thread.start()
 
     # register dss
     if crm:
@@ -941,6 +949,40 @@ class Server:
           self._hexa.glana.stop_rec()
           self._hexa.set_gimbal(-1, 0, 0)
           self._logger.error("Client doesn't have the control anymore... stopped recording")
+
+  #############################################################################
+  # THREAD *NETWORK LOG*
+  #############################################################################
+
+  def _main_network(self):
+    '''Monitors and logs the network status'''
+    # Set up Engineering mode
+    self._modem.set_modem('set_engineering_m')
+    # Set up reporting of cell id
+    if self._modem.set_modem('network_reg_set_opt2'):
+      self._logger.info("Modem set to report Cell-ID on request")
+    else:
+      self._logger.warning("FAILED: Modem set to report Cell-ID on request")
+
+    # Static information
+    hw = self._modem.parse('hardware')
+    imsi = self._modem.parse('imsi')
+    emei = self._modem.parse('emei')
+    num = self._modem.parse('my_number')
+    cop = self._modem.parse('current_operator')
+
+    # Merge dicts
+    static = {**hw, **imsi, **emei, **num, **cop}
+
+
+    # Dynamic information
+    while self.alive:
+      scell = self._modem.parse('sig_serving_cell')
+      ncell = self._modem.parse('sig_neigbour_cell')
+      time.sleep(1)
+
+    # Close logfile
+
 
   #############################################################################
   # THREAD *MAIN*
