@@ -876,16 +876,16 @@ class Server:
 
   def _attribute_listener(self, vehicle, att_name, msg):
     if att_name == 'attitude':
-      msg = {"Data": "att", "r": msg.roll, "p": msg.pitch, "y": msg.yaw}
+      msg = {"r": msg.roll, "p": msg.pitch, "y": msg.yaw}
       self._pub_socket.publish('ATT', msg)
       #print("Attitude callback sending log data:", json_msg)
     # LLA
     elif att_name == 'location.global_frame':
-      msg = {'lat': msg.lat, 'lon': msg.lon, 'alt': msg.alt, 'heading': -1, 'agl': -1 } # TODO heading and AGL
+      msg = {'lat': msg.lat, 'lon': msg.lon, 'alt': msg.alt, 'heading': vehicle.heading, 'velocity': self._hexa.get_ned_velocity(), 'agl': -1 }
       self._pub_socket.publish('LLA', msg)
     # NED
     elif att_name == 'location.local_frame':
-      msg = {'north': msg.north, 'east': msg.east, 'down': msg.down, 'heading': -1, 'agl': -1} # TODO heading and AGL
+      msg = {'north': msg.north, 'east': msg.east, 'down': msg.down, 'heading': vehicle.heading, 'velocity': self._hexa.get_ned_velocity(), 'agl': -1}
       self._pub_socket.publish('NED', msg)
     else:
       self._logger.error('Unknown attribute send to listener: %s', att_name)

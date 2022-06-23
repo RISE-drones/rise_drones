@@ -23,6 +23,12 @@ __version__ = '1.1.0'
 __copyright__ = 'Copyright (c) 2019-2021, RISE'
 __status__ = 'development'
 
+def rotate_body_velocity(att, body_vel):
+  v_n = math.cos(att.yaw)*math.cos(att.pitch)*body_vel[0] + (-math.sin(att.yaw)*math.cos(att.roll) + math.cos(att.yaw)*math.sin(att.pitch)*math.sin(att.roll))*body_vel[1] + ( math.sin(att.yaw)*math.sin(att.roll) + math.cos(att.yaw)*math.sin(att.pitch)*math.cos(att.roll))*body_vel[2]
+  v_e = math.sin(att.yaw)*math.cos(att.pitch)*body_vel[0] + ( math.cos(att.yaw)*math.cos(att.roll) + math.sin(att.yaw)*math.sin(att.pitch)*math.sin(att.roll))*body_vel[1] + (-math.cos(att.yaw)*math.sin(att.roll) + math.sin(att.yaw)*math.sin(att.pitch)*math.cos(att.roll))*body_vel[2]
+  v_d = -math.sin(att.pitch)*body_vel[0] + math.cos(att.pitch)*math.sin(att.roll)*body_vel[1] + math.cos(att.pitch)*math.cos(att.roll)*body_vel[2]
+  return [v_n, v_e, v_d]
+
 def get_distance(location1, location2):
   '''
   Returns the ground distance in metres between two LocationGlobal objects.
@@ -337,7 +343,11 @@ class Hexacopter:
   def get_nsat(self) -> int:
     return self.vehicle.gps_0.satellites_visible
 
-  # Method returns armed state. We concider armed state as flying.
+  # Returns the velocity represented in NED coordinate system
+  def get_ned_velocity(self):
+    return rotate_body_velocity(self.vehicle.attitude, self.vehicle.velocity)
+
+  # Method returns armed state. We consider armed state as flying.
   def is_flying(self) -> bool:
     return self.vehicle.armed
 
