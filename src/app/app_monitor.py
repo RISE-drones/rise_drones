@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
-from concurrent.futures import thread
+import threading
 import logging
 import threading
 import time
@@ -9,7 +9,7 @@ import traceback
 import sys
 import json
 import zmq
-
+import math
 
 import dss.auxiliaries
 import dss.client
@@ -75,7 +75,7 @@ class Monitor():
     self._info_threads = {}
     #Store the data received from the drones
     self.drone_data = {}
-    self.drone_data_lock = threading.Lock()
+    self.drone_data_locks = {}
     self.mqtt_agent = mqtt_agent
     self._mqtt_threads = {}
 
@@ -160,6 +160,7 @@ class Monitor():
 #--------------------------------------------------------------------#
   def setup_client(self, client):
     self._info_threads[client['id']] = threading.Thread(target=self._subscriber_thread, args=(client,))
+    self.drone_data_locks[client['id']]= threading.Lock()
     self._info_threads[client['id']].start()
 
   def setup_mqtt_client(self, client):
@@ -176,12 +177,21 @@ class Monitor():
     time.sleep(2.0)
     rate: float = 1.0 / mqtt_agent.logic.rate #1.0
     while self.client_in_list(drone_id, self.clients):
-      self.drone_data_lock.acquire()
+      drone_data = None
+      self.drone_data_locks[drone_id].acquire()
       try:
-        mqtt_agent.set_lla(self.drone_data[drone_id]['lat'], self.drone_data[drone_id]['lon'], self.drone_data[drone_id]['alt'])
+        drone_data = self.drone_data[drone_id]
       except KeyError:
         _logger.warning("No data received from drone with with ID %s" % drone_id)
-      self.drone_data_lock.release()
+      self.drone_data_locks[drone_id].release()
+      if drone_data :
+        mqtt_agent.set_lla(drone_data['lat'], drone_data['lon'], drone_data['alt'])
+        mqtt_agent.set_heading(drone_data['heading'])
+        speed = math.sqrt(drone_data['velocity'][0]**2 + drone_data['velocity'][1]**2)
+        mqtt_agent.set_speed(speed)
+        if speed > 0.1 :
+          course = math.atan2(drone_data['velocity'][1], drone_data['velocity'][0])
+          mqtt_agent.set_course(course)
       mqtt_agent.send_heartbeat()
       mqtt_agent.send_sensor_info()
       mqtt_agent.send_position()
@@ -201,15 +211,16 @@ class Monitor():
 
     # Connect the Request socket to enable the LLA stream
     req_socket = dss.auxiliaries.zmq.Req(_context, ip, port, label=drone_id)
-    # Enable LLA stream
-    self.enable_lla_stream(req_socket)
+    # Enable stream
+    stream = 'LLA'
+    self.enable_stream(stream,req_socket)
     # Get info port from DSS
     sub_port = self.get_port(req_socket, 'info_pub_port')
     # print("Info pub port: ", sub_port)
 
     # Create subscription socket and start listening thread
     sub_socket = dss.auxiliaries.zmq.Sub(_context, ip, sub_port, drone_id)
-    sub_socket.subscribe('LLA')
+    sub_socket.subscribe(stream)
 
     if self.mqtt_agent:
       self.setup_mqtt_client(client)
@@ -217,33 +228,46 @@ class Monitor():
     while self.client_in_list(drone_id, self.clients):
       try:
         (topic, msg) = sub_socket.recv()
-        if topic == "LLA":
-          self.drone_data_lock.acquire()
+        if topic == stream:
+          self.drone_data_locks[drone_id].acquire()
           self.drone_data[drone_id] = msg
-          self.drone_data_lock.release()
+          self.drone_data_locks[drone_id].release()
         else:
           print("Topic not recognized on info link: ", (topic, msg), '\r')
       except:
         pass
     #Remove the drone from the map
-    self.drone_data_lock.acquire()
+    self.drone_data_locks[drone_id].acquire()
     try :
       self.drone_data.pop(drone_id)
     except KeyError :
       _logger.info("No data received from client with ID %s" % drone_id)
-    self.drone_data_lock.release()
-    sub_socket.unsubscribe('LLA')
+    self.drone_data_locks[drone_id].release()
+    self.drone_data_locks.pop(drone_id)
+    self.disable_stream(stream,req_socket)
+    sub_socket.unsubscribe(stream)
     sub_socket.close()
     req_socket.close()
     _logger.info("Stopped thread and closed socket for client: %s" % drone_id)
 
 #--------------------------------------------------------------------#
-  # Call the DSS reply socket using the req_socket to enable the LLA-stream
+  # Call the DSS reply socket using the req_socket to enable a stream
   # Ref fcn: 'data_stream'
-  def enable_lla_stream(self, socket):
+  def enable_stream(self, stream, socket):
     msg = {'fcn': 'data_stream', 'id': self.crm.app_id}
-    msg['stream'] = 'LLA'
+    msg['stream'] = stream
     msg['enable'] = True
+    answer = socket.send_and_receive(msg)
+    if not dss.auxiliaries.zmq.is_ack(answer):
+      _logger.error('data_stream error: %s', answer)
+
+#--------------------------------------------------------------------#
+  # Call the DSS reply socket using the req_socket to disable a stream
+  # Ref fcn: 'data_stream'
+  def disable_stream(self, stream, socket):
+    msg = {'fcn': 'data_stream', 'id': self.crm.app_id}
+    msg['stream'] = stream
+    msg['enable'] = False
     answer = socket.send_and_receive(msg)
     if not dss.auxiliaries.zmq.is_ack(answer):
       _logger.error('data_stream error: %s', answer)
