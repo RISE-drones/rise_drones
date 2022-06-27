@@ -6,12 +6,16 @@ import threading
 import time
 import traceback
 import typing
+import sys
 
 import zmq
 
 import dss.auxiliaries
 from dss.auxiliaries.config import config
 import dss.client
+
+sys.path.append('/home/pi/rise_drones_dev/modem')
+from modem import Modem
 
 __author__ = 'Lennart Ochel <lennart.ochel@ri.se>, Andreas Gising <andreas.gising@ri.se>, Kristoffer Bergman <kristoffer.bergman@ri.se>, Hanna Müller <hanna.muller@ri.se>, Joel Nordahl'
 __version__ = '1.1.0'
@@ -87,7 +91,39 @@ class Server:
       self._logger.info('Connecting to photo client on %s... done', config['DSS']['PhotoClient'])
 
     if network_log:
+      self._logger.info("Network logger enabled")
+
       self._modem = Modem("/dev/ttyUSB3")
+
+      my_log = {}
+
+      # Get static info
+      my_log['static_info'] = self._modem.get_static_info()
+
+      # Enter thread to collect data
+      k = 1
+      while k < 5:
+          # Get dynamic info
+          log_item = self._modem.get_cell_info()
+
+          # Add fake pos data
+          log_item['pos'] = {}
+          log_item['pos']['lat'] = 58.6
+          log_item['pos']['long'] = 15.6
+          log_item['pos']['alt'] = 102
+
+          my_log[str(k)] = {}
+          my_log[str(k)] = log_item
+
+          time.sleep(1)
+          k+=1
+
+      print(json.dumps(my_log, indent=4))
+
+      log_str = json.dumps(my_log, indent=4)
+      print(log_str)
+      with open('network-log.json','w', encoding="utf-8") as outfile:
+          outfile.write(log_str)
 
 
     # all attributes are disabled by default
