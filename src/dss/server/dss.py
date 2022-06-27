@@ -974,7 +974,7 @@ class Server:
     # Allocate logfile
     timestamp = time.strftime('%Y%m%d_%H%M%S')
     log_filename = '{}_{}'.format(timestamp, 'network-log.json')
-    log_items_filename = '{}_{}'.format(timestamp, 'network-log-items.json')
+    log_items_filename = '{}_{}'.format(timestamp, 'network-log-items.txt')
     log_file = 'log/' + log_filename
     log_items = 'log/' + log_items_filename
 
@@ -999,8 +999,13 @@ class Server:
         log_item['pos']['long'] = pos.lon
         log_item['pos']['alt'] = pos.alt
 
+        # Print data to local log dict. this might be big and have momory issues..
         my_log[str(k)] = {}
         my_log[str(k)] = log_item
+
+        # Make small json item to continously save to log as txt
+        temp = {}
+        temp[str(k)] = log_item
 
         log_item_str = json.dumps(my_log[str(k)])
         with open(log_items, 'a', encoding="utf-8") as outfile:
