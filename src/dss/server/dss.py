@@ -964,13 +964,11 @@ class Server:
     self._modem = Modem("/dev/ttyUSB3")
 
     # Set up Engineering mode
-    self._modem.set_modem('set_engineering_m')
     # Set up reporting of cell id
     if self._modem.set_modem('network_reg_set_opt2'):
       self._logger.info("Modem set to report Cell-ID on request")
     else:
       self._logger.warning("FAILED: Modem set to report Cell-ID on request")
-
 
     # Allocate logfile
     my_log = {}
