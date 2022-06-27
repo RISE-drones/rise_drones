@@ -988,11 +988,11 @@ class Server:
     with open(log_items, 'w', encoding="utf-8") as outfile:
           outfile.write('{ "static_info":')
           outfile.write(json.dumps(my_log['static_info']))
-          outfile.write('}')
 
     # Enter loop to collect data
     k = 0
-    while True:
+    not_landed = True
+    while not_landed:
         # Get dynamic info
         log_item = self._modem.get_cell_info()
 
@@ -1014,16 +1014,13 @@ class Server:
         temp[str(k)] = log_item
 
         log_item_str = json.dumps(log_item)
-        with open(log_items, 'rb+', encoding="utf-8") as outfile:
+        with open(log_items, 'a', encoding="utf-8") as outfile:
           # Write comma and add newline
           # Remove the wing
-          outfile.seek(-1, os.SEEK_END)
-          outfile.truncate()
           outfile.write(',')
           new_key = '"' + str(k) + '"' + ':'
           outfile.write(new_key)
           outfile.write(log_item_str)
-          outfile.write('}')
         time.sleep(1)
         k+=1
 
