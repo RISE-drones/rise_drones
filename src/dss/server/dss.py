@@ -1014,7 +1014,7 @@ class Server:
         log_item_str = json.dumps(log_item)
         with open(log_items, 'a', encoding="utf-8") as outfile:
           # Write comma and add newline
-          outfile.write(',\n')
+          outfile.write(',')
           new_key = '"' + str(k) + '"' + ':'
           outfile.write(new_key)
           outfile.write(log_item_str)
@@ -1022,7 +1022,7 @@ class Server:
         k+=1
 
     with open(log_items, 'a', encoding="utf-8") as outfile:
-      outfile.write('\n }')
+      outfile.write('}')
 
     #print(json.dumps(my_log, indent=4))
 
