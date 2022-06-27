@@ -1029,9 +1029,11 @@ class Server:
     #log_str = json.dumps(my_log, indent=4)
     #print(log_str)
 
-    test = {}
     with open(log_items, 'r', encoding="utf-8") as infile:
-      print("the logfile: ", json.load(infile))
+      big_json = json.load(infile)
+      with open(log_file, 'w', encoding="utf-8") as outfile:
+        log_str = json.dumps(big_json, indent=4)
+        outfile.write(log_str)
 
     # log_str = json.dumps(test, indent=4)
     # print(log_str)
