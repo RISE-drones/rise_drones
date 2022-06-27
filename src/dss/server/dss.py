@@ -1002,7 +1002,7 @@ class Server:
         my_log[str(k)] = {}
         my_log[str(k)] = log_item
 
-        log_item_str = json.dumps(my_log[k])
+        log_item_str = json.dumps(my_log[str(k)])
         with open(log_items, 'a', encoding="utf-8") as outfile:
           outfile.write(log_item_str)
         time.sleep(1)
