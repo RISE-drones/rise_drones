@@ -989,8 +989,8 @@ class Server:
           outfile.write(json.dumps(my_log['static_info']))
 
     # Enter loop to collect data
-    k = 1
-    while k < 5:
+    k = 0
+    while k < 3:
         # Get dynamic info
         log_item = self._modem.get_cell_info()
 
@@ -1035,6 +1035,14 @@ class Server:
         log_str = json.dumps(big_json, indent=4)
         outfile.write(log_str)
 
+
+    with open(log_items, 'r', encoding='utf-8') as infile:
+      t_json = json.load(infile)
+      print("From log items: ", t_json["1"])
+
+    with open(log_items, 'r', encoding='utf-8') as infile:
+      r_json = json.load(infile)
+      print("from pretty formatted: ", r_json["1"])
     # log_str = json.dumps(test, indent=4)
     # print(log_str)
     # with open(log_file, 'w', encoding="utf-8") as outfile:
