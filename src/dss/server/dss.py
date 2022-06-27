@@ -990,7 +990,7 @@ class Server:
 
     # Enter loop to collect data
     k = 0
-    while k < 3:
+    while self.alive:
         # Get dynamic info
         log_item = self._modem.get_cell_info()
 
