@@ -90,41 +90,6 @@ class Server:
       self._photo = dss.server.photo.Client(self._zmq_context, config['DSS']['PhotoClient'])
       self._logger.info('Connecting to photo client on %s... done', config['DSS']['PhotoClient'])
 
-    if network_log:
-      self._logger.info("Network logger enabled")
-
-      self._modem = Modem("/dev/ttyUSB3")
-
-      my_log = {}
-
-      # Get static info
-      my_log['static_info'] = self._modem.get_static_info()
-
-      # Enter thread to collect data
-      k = 1
-      while k < 5:
-          # Get dynamic info
-          log_item = self._modem.get_cell_info()
-
-          # Add fake pos data
-          log_item['pos'] = {}
-          log_item['pos']['lat'] = 58.6
-          log_item['pos']['long'] = 15.6
-          log_item['pos']['alt'] = 102
-
-          my_log[str(k)] = {}
-          my_log[str(k)] = log_item
-
-          time.sleep(1)
-          k+=1
-
-      print(json.dumps(my_log, indent=4))
-
-      log_str = json.dumps(my_log, indent=4)
-      print(log_str)
-      with open('network-log.json','w', encoding="utf-8") as outfile:
-          outfile.write(log_str)
-
 
     # all attributes are disabled by default
     self._pub_attributes = {'ATT':                   {'enabled': False, 'name': 'attitude'},
@@ -209,6 +174,7 @@ class Server:
     glana_thread = threading.Thread(target=self._main_glana, daemon=True)
     glana_thread.start()
 
+    # start network log
     if network_log:
       network_thread = threading.Tread(target=self._main_network_log, daemon=True)
       network_thread.start()
@@ -992,6 +958,11 @@ class Server:
 
   def _main_network(self):
     '''Monitors and logs the network status'''
+    self._logger.info("Network logger thread enabled")
+
+    # Connect to modem on specified path
+    self._modem = Modem("/dev/ttyUSB3")
+
     # Set up Engineering mode
     self._modem.set_modem('set_engineering_m')
     # Set up reporting of cell id
@@ -1000,22 +971,38 @@ class Server:
     else:
       self._logger.warning("FAILED: Modem set to report Cell-ID on request")
 
+
+    # Allocate logfile
+    my_log = {}
+
     # Static information
-    hw = self._modem.parse('hardware')
-    imsi = self._modem.parse('imsi')
-    emei = self._modem.parse('emei')
-    num = self._modem.parse('my_number')
-    cop = self._modem.parse('current_operator')
+    my_log['static_info'] = self._modem.get_static_info()
 
-    # Merge dicts
-    static = {**hw, **imsi, **emei, **num, **cop}
+    # Enter loop to collect data
+    k = 1
+    while k < 5:
+        # Get dynamic info
+        log_item = self._modem.get_cell_info()
 
+        # Add fake pos data
+        log_item['pos'] = {}
 
-    # Dynamic information
-    while self.alive:
-      scell = self._modem.parse('sig_serving_cell')
-      ncell = self._modem.parse('sig_neigbour_cell')
-      time.sleep(1)
+        log_item['pos']['lat'] = 58.42 #self._hexa.vehicle.location.global_relative_frame.coor
+        log_item['pos']['long'] = 15.6
+        log_item['pos']['alt'] = 102
+
+        my_log[str(k)] = {}
+        my_log[str(k)] = log_item
+
+        time.sleep(1)
+        k+=1
+
+    print(json.dumps(my_log, indent=4))
+
+    log_str = json.dumps(my_log, indent=4)
+    print(log_str)
+    with open('network-log.json','w', encoding="utf-8") as outfile:
+        outfile.write(log_str)
 
     # Close logfile
 
