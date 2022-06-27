@@ -986,9 +986,11 @@ class Server:
         # Add fake pos data
         log_item['pos'] = {}
 
-        log_item['pos']['lat'] = 58.42 #self._hexa.vehicle.location.global_relative_frame.coor
-        log_item['pos']['long'] = 15.6
-        log_item['pos']['alt'] = 102
+        pos = self._hexa.get_position_lla_global()
+        print(pos.lat)
+        log_item['pos']['lat'] = pos.lat
+        log_item['pos']['long'] = pos.lon
+        log_item['pos']['alt'] = pos.alt
 
         my_log[str(k)] = {}
         my_log[str(k)] = log_item
