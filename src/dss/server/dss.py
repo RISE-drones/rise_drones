@@ -985,7 +985,7 @@ class Server:
     my_log['static_info'] = self._modem.get_static_info()
 
     with open(log_items, 'w', encoding="utf-8") as outfile:
-          outfile.write('"{ "static_info":')
+          outfile.write('{ "static_info":')
           outfile.write(json.dumps(my_log['static_info']))
 
     # Enter loop to collect data
@@ -1022,7 +1022,7 @@ class Server:
         k+=1
 
     with open(log_items, 'a', encoding="utf-8") as outfile:
-      outfile.write('}"')
+      outfile.write('}')
 
     #print(json.dumps(my_log, indent=4))
 
@@ -1031,7 +1031,7 @@ class Server:
 
     test = {}
     with open(log_items, 'r', encoding="utf-8") as infile:
-      print("the logfile: ", json.loads(infile))
+      print("the logfile: ", json.load(infile))
 
     # log_str = json.dumps(test, indent=4)
     # print(log_str)
