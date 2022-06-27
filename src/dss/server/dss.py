@@ -984,6 +984,10 @@ class Server:
     # Static information
     my_log['static_info'] = self._modem.get_static_info()
 
+    with open(log_items, 'w', encoding="utf-8") as outfile:
+          outfile.write('{ "static_info":')
+          outfile.write(json.dumps(my_log['static_info']))
+
     # Enter loop to collect data
     k = 1
     while k < 5:
@@ -1007,11 +1011,18 @@ class Server:
         temp = {}
         temp[str(k)] = log_item
 
-        log_item_str = json.dumps(temp)
+        log_item_str = json.dumps(log_item)
         with open(log_items, 'a', encoding="utf-8") as outfile:
+          # Write comma and add newline
+          outfile.write(',\n')
+          new_key = '"' + str(k) + '"' + ':'
+          outfile.write(new_key)
           outfile.write(log_item_str)
         time.sleep(1)
         k+=1
+
+    with open(log_items, 'a', encoding="utf-8") as outfile:
+      outfile.write('\n }')
 
     #print(json.dumps(my_log, indent=4))
 
@@ -1020,12 +1031,12 @@ class Server:
 
     test = {}
     with open(log_items, 'r', encoding="utf-8") as infile:
-      test = json.loads(infile.read())
+      print("the logfile: ", json.loads(infile))
 
-    log_str = json.dumps(test, indent=4)
-    print(log_str)
-    with open(log_file, 'w', encoding="utf-8") as outfile:
-          outfile.write(log_str)
+    # log_str = json.dumps(test, indent=4)
+    # print(log_str)
+    # with open(log_file, 'w', encoding="utf-8") as outfile:
+    #       outfile.write(log_str)
 
     # Close logfile
 
