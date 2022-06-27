@@ -960,99 +960,87 @@ class Server:
 
   def _main_network(self):
     '''Monitors and logs the network status'''
-    self._logger.info("Network logger thread enabled")
+    self._logger.info("MODEM: Network logger thread enabled")
 
     # Connect to modem on specified path
-    self._modem = Modem("/dev/ttyUSB3")
+    try:
+      self._modem = Modem("/dev/ttyUSB2")
+      self._logger.info('MODEM: Connected to modem on /dev/ttyUSB2')
+    except:
+      self._logger.info('MODEM: Could not find modem device, ttyUSB2')
+      # Try the other port
+      try:
+        self._modem = Modem("/dev/ttyUSB3")
+        self._logger.info('MODEM: Connected to modem on /dev/ttyUSB3')
+      except:
+        self._logger.info('MODEM: Could not find modem device, ttyUSB3')
+        self._logger.warning('MODEM: Cound not find mode device. Quit network logger thread')
+        return
 
     # Set up Engineering mode
     # Set up reporting of cell id
     if self._modem.set_modem('network_reg_set_opt2'):
-      self._logger.info("Modem set to report Cell-ID on request")
+      self._logger.info("MODEM: Modem set to report Cell-ID on request")
     else:
-      self._logger.warning("FAILED: Modem set to report Cell-ID on request")
+      self._logger.warning("MODEM: FAILED to set Modem to report Cell-ID on request")
 
-    # Allocate logfile
+    # Allocate logfiles
     timestamp = time.strftime('%Y%m%d_%H%M%S')
-    log_filename = '{}_{}'.format(timestamp, 'network-log.json')
     log_items_filename = '{}_{}'.format(timestamp, 'network-log-items.txt')
-    log_file = 'log/' + log_filename
+    log_filename = '{}_{}'.format(timestamp, 'network-log.json')
     log_items = 'log/' + log_items_filename
+    log_file = 'log/' + log_filename
 
-    # Allocate local json log object
-    my_log = {}
+    # Poll static infomration
+    static = self._modem.get_static_info()
+    self._logger.info(f'MODEM: imei: {static["static_info"]["imei"]}, number: {static["static_info"]["number"]}')
 
-    # Static information
-    my_log['static_info'] = self._modem.get_static_info()
-
+    # Save static information and leave out final curly bracket
     with open(log_items, 'w', encoding="utf-8") as outfile:
+          # Manually add the key to prevent the final curly bracket
           outfile.write('{ "static_info":')
-          outfile.write(json.dumps(my_log['static_info']))
+          # Write the log_item as a string under the newly added key
+          outfile.write(json.dumps(static['static_info']))
 
-    # Enter loop to collect data
-    k = 0
-    not_landed = True
-    while not_landed:
-        # Get dynamic info
+    # Wait for vehicle to arm
+    while self._hexa.is_armed():
+      time.sleep(0.5)
+
+    # Enter loop to collect data until landed
+    index = 0
+    while self._hexa.get_flying_state != 'landed':
+        # Get dynamic info, keys: serving, neighbour and time
         log_item = self._modem.get_cell_info()
 
-        # Add fake pos data
-        log_item['pos'] = {}
-
+        # Add pos data
         pos = self._hexa.get_position_lla_global()
-        print(pos.lat)
+        log_item['pos'] = {}
         log_item['pos']['lat'] = pos.lat
         log_item['pos']['long'] = pos.lon
         log_item['pos']['alt'] = pos.alt
 
-        # Print data to local log dict. this might be big and have momory issues..
-        my_log[str(k)] = {}
-        my_log[str(k)] = log_item
-
-        # Make small json item to continously save to log as txt
-        temp = {}
-        temp[str(k)] = log_item
-
-        log_item_str = json.dumps(log_item)
+        # Save the log_item under a new key in the log file built line by line
         with open(log_items, 'a', encoding="utf-8") as outfile:
-          # Write comma and add newline
-          # Remove the wing
+          # Write comma to previous line
           outfile.write(',')
-          new_key = '"' + str(k) + '"' + ':'
+          # Add a new numbered key manually
+          new_key = '"' + str(index) + '"' + ':'
           outfile.write(new_key)
-          outfile.write(log_item_str)
+          # write the log_item as a string under the newly added key
+          outfile.write(json.dumps(log_item))
         time.sleep(1)
-        k+=1
+        index+=1
 
+    # Add the final curly bracket
     with open(log_items, 'a', encoding="utf-8") as outfile:
       outfile.write('}')
 
-    #print(json.dumps(my_log, indent=4))
-
-    #log_str = json.dumps(my_log, indent=4)
-    #print(log_str)
-
+    # Open the log file and save it in an other file with pretty print
     with open(log_items, 'r', encoding="utf-8") as infile:
       big_json = json.load(infile)
       with open(log_file, 'w', encoding="utf-8") as outfile:
         log_str = json.dumps(big_json, indent=4)
         outfile.write(log_str)
-
-
-    with open(log_items, 'r', encoding='utf-8') as infile:
-      t_json = json.load(infile)
-      print("From log items: ", t_json["1"])
-
-    with open(log_items, 'r', encoding='utf-8') as infile:
-      r_json = json.load(infile)
-      print("from pretty formatted: ", r_json["1"])
-    # log_str = json.dumps(test, indent=4)
-    # print(log_str)
-    # with open(log_file, 'w', encoding="utf-8") as outfile:
-    #       outfile.write(log_str)
-
-    # Close logfile
-
 
   #############################################################################
   # THREAD *MAIN*
