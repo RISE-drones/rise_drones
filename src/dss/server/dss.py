@@ -8,6 +8,7 @@ import traceback
 import typing
 import sys
 import datetime
+import os
 
 import zmq
 
@@ -1013,10 +1014,11 @@ class Server:
         temp[str(k)] = log_item
 
         log_item_str = json.dumps(log_item)
-        with open(log_items, 'a', encoding="utf-8") as outfile:
+        with open(log_items, 'rb+', encoding="utf-8") as outfile:
           # Write comma and add newline
           # Remove the wing
-          outfile.truncate(outfile.tell - 1)
+          outfile.seek(-1, os.SEEK_END)
+          outfile.truncate()
           outfile.write(',')
           new_key = '"' + str(k) + '"' + ':'
           outfile.write(new_key)
