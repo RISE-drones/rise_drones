@@ -1019,7 +1019,7 @@ class Server:
     #print(log_str)
 
     test = {}
-    with open(log_items, 'r', enconding="utf-8") as infile:
+    with open(log_items, 'r', encoding="utf-8") as infile:
       test = json.loads(infile.read())
 
     log_str = json.dumps(test, indent=4)
