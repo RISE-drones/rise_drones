@@ -176,7 +176,7 @@ class Server:
 
     # start network log
     if network_log:
-      network_thread = threading.Thread(target=self._main_network_log, daemon=True)
+      network_thread = threading.Thread(target=self._main_network, daemon=True)
       network_thread.start()
 
     # register dss
