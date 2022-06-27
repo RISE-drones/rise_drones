@@ -287,8 +287,7 @@ class Hexacopter:
     self._expected_flight_mode = True
     self._rtl_waypoints = list()
     self._default_speed = 5
-    self._flying_states = ['on_ground','flying','landed']
-    self._flying_state = self._flying_states[0]
+    self._flying_state = 'on_ground'
 
     self._thread_flight_mode = threading.Thread(target=self._main_flight_mode, daemon=True)
     self._thread_flight_mode.start()
@@ -351,7 +350,7 @@ class Hexacopter:
     self.logger.warning(f'Depricated funciton is_flying, use get_flying_state instead')
     return self.vehicle.armed
 
-  def is_armed(self) - bool:
+  def is_armed(self) -> bool:
     return self.vehicle.armed
 
   def is_init_point_set(self) -> bool:
@@ -584,10 +583,6 @@ class Hexacopter:
       if self._flying_state == 'flying':
         self._flying_state == 'landed'
         self.logger.info(f'Flying state: {self._flying_state}')
-
-
-
-
 
   def set_flight_mode_and_wait(self, mode, timeout=0.5):
     with self._mutex_mode:
