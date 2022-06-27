@@ -1013,12 +1013,17 @@ class Server:
         time.sleep(1)
         k+=1
 
-    print(json.dumps(my_log, indent=4))
+    #print(json.dumps(my_log, indent=4))
 
-    log_str = json.dumps(my_log, indent=4)
+    #log_str = json.dumps(my_log, indent=4)
+    #print(log_str)
+
+    test = {}
+    with open(log_items, 'r', enconding="utf-8") as infile:
+      test = json.loads(infile.read())
+
+    log_str = json.dumps(test, indent=4)
     print(log_str)
-
-
     with open(log_file, 'w', encoding="utf-8") as outfile:
           outfile.write(log_str)
 
