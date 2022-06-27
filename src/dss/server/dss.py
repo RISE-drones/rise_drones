@@ -972,6 +972,13 @@ class Server:
       self._logger.warning("FAILED: Modem set to report Cell-ID on request")
 
     # Allocate logfile
+    timestamp = time.strftime('%Y%m%d_%H%M%S')
+    log_filename = '{}_{}'.format(timestamp, 'network-log.json')
+    log_items_filename = '{}_{}'.format(timestamp, 'network-log-items.json')
+    log_file = 'log/' + log_filename
+    log_items = 'log/' + log_items_filename
+
+    # Allocate local json log object
     my_log = {}
 
     # Static information
@@ -995,6 +1002,9 @@ class Server:
         my_log[str(k)] = {}
         my_log[str(k)] = log_item
 
+        log_item_str = json.dumps(my_log[k])
+        with open(log_items, 'a', encoding="utf-8") as outfile:
+          outfile.write(log_item_str)
         time.sleep(1)
         k+=1
 
@@ -1003,11 +1013,8 @@ class Server:
     log_str = json.dumps(my_log, indent=4)
     print(log_str)
 
-    # Create log file
-    timestamp = time.strftime('%Y%m%d_%H%M%S')
-    filename = '{}_{}'.format(timestamp, 'network-log.json')
-    path_to_file = 'log/' + filename
-    with open(path_to_file,'w', encoding="utf-8") as outfile:
+
+    with open(log_file, 'w', encoding="utf-8") as outfile:
           outfile.write(log_str)
 
     # Close logfile
