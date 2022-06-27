@@ -287,9 +287,13 @@ class Hexacopter:
     self._expected_flight_mode = True
     self._rtl_waypoints = list()
     self._default_speed = 5
+    self._flying_states = ['on_ground','flying','landed']
+    self._flying_state = self._flying_states[0]
 
     self._thread_flight_mode = threading.Thread(target=self._main_flight_mode, daemon=True)
     self._thread_flight_mode.start()
+
+    self._thread_flying_state = threading.Thread(target=self._main_flying_state, daemon=True)
 
   @property
   def status_msg(self):
@@ -318,6 +322,11 @@ class Hexacopter:
   def abort_task(self, value):
     self._abort_task = value
 
+  @property
+  def flying_state(self):
+    '''Get the flying state'''
+    return self._flying_state
+
   def raise_if_aborted(self):
     if self.abort_task:
       self._status_msg = 'the task was aborted'
@@ -339,6 +348,10 @@ class Hexacopter:
 
   # Method returns armed state. We concider armed state as flying.
   def is_flying(self) -> bool:
+    self.logger.warning(f'Depricated funciton is_flying, use get_flying_state instead')
+    return self.vehicle.armed
+
+  def is_armed(self) - bool:
     return self.vehicle.armed
 
   def is_init_point_set(self) -> bool:
@@ -538,6 +551,7 @@ class Hexacopter:
       flight_mode = self.get_flight_mode()
       self._expected_flight_mode = (flight_mode == self.mode)
 
+  # Monitor flight mode thread
   def _main_flight_mode(self):
     while True:
       with self._mutex_mode:
@@ -545,6 +559,35 @@ class Hexacopter:
         self._expected_flight_mode = (mode == self.mode)
 
       time.sleep(0.5)
+
+  # Monitor flying state implements state machine: on_ground -> flying <-> landed
+  def _main_flying_state(self):
+    self._flying_state = 'on_ground'
+    self.logger.info(f'Flying state: {self.get_flying_state()}')
+    while True:
+      # Vehicle 'on_ground' or 'landed', wait for arming and lift off
+      while not self.vehicle.armed:
+        time.sleep(0.51)
+      # Vehicle armed
+      start_alt = self.vehicle.location.global_frame
+
+      # While armed, test trasition to flying state
+      while self.vehicle.armed:
+        if self._flying_state != 'flying':
+          if 1 > self.vehicle.location.global_frame - start_alt:
+            # Up and flying, update state
+            self._flying_state = 'flying'
+            self.logger.info(f'Flying state: {self._flying_state}')
+        time.sleep(0.51)
+
+      # Vehicle is not armed anymore
+      if self._flying_state == 'flying':
+        self._flying_state == 'landed'
+        self.logger.info(f'Flying state: {self._flying_state}')
+
+
+
+
 
   def set_flight_mode_and_wait(self, mode, timeout=0.5):
     with self._mutex_mode:
@@ -723,9 +766,11 @@ class Hexacopter:
 
         self.logger.info(f'task: gogo - Moving towards waypoint {next_wp_str}')
 
+  # Lat long pos and alt relative to start
   def get_position_lla(self):
     return self.vehicle.location.global_relative_frame
 
+  # Lat long and alt AMSL
   def get_position_lla_global(self):
     return self.vehicle.location.global_frame
 
