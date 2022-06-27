@@ -7,6 +7,7 @@ import time
 import traceback
 import typing
 import sys
+import datetime
 
 import zmq
 
@@ -999,8 +1000,13 @@ class Server:
 
     log_str = json.dumps(my_log, indent=4)
     print(log_str)
-    with open('network-log.json','w', encoding="utf-8") as outfile:
-        outfile.write(log_str)
+
+    # Create log file
+    timestamp = time.strftime('%Y%m%d_%H%M%S')
+    filename = '{}_{}'.format(timestamp, 'network-log.json')
+    path_to_file = 'log/' + filename
+    with open(path_to_file,'w', encoding="utf-8") as outfile:
+          outfile.write(log_str)
 
     # Close logfile
 
