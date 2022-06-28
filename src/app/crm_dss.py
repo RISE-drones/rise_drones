@@ -30,7 +30,6 @@ def _main():
   parser.add_argument('--virgin', action='store_true', help='defines if to start from a backup or not', required=False)
   parser.add_argument('--without-midstick-check', action='store_true', help='Disables the "throttle to mid-stick" check', required=False)
   parser.add_argument('--without-clearance-check', action='store_true', help='Disables the "low-high-low clearance" check from the operator', required=False)
-  parser.add_argument('--network_log', type=bool, default=False, required=False)
   parser.set_defaults(feature=True)
 
   args = parser.parse_args()
@@ -43,7 +42,7 @@ def _main():
 
   # start dss
   try:
-    server = Server(dss_ip=args.dss_ip, dss_id=args.dss_id, drone=args.drone, midstick_check=not args.without_midstick_check, clearance_check=not args.without_clearance_check, crm=args.crm, description=args.descr, die_gracefully=True, network_log=args.network_log)
+    server = Server(dss_ip=args.dss_ip, dss_id=args.dss_id, drone=args.drone, midstick_check=not args.without_midstick_check, clearance_check=not args.without_clearance_check, crm=args.crm, description=args.descr, die_gracefully=True)
   except dss.auxiliaries.exception.Error as error:
     logging.critical(str(error))
     sys.exit()

@@ -31,7 +31,7 @@ __status__ = 'development'
 class Server:
   '''Drone Safety Service Server - new implementation'''
 
-  def __init__(self, dss_ip, dss_id='', drone: str='', baud=921600, with_gcs=False, gcs_address=None, rangefinder=False, autogain=False, midstick_check=True, clearance_check=True, photo=False, crm: str='', description='crm_dss', die_gracefully: bool=False, network_log=False):
+  def __init__(self, dss_ip, dss_id='', drone: str='', baud=921600, with_gcs=False, gcs_address=None, rangefinder=False, autogain=False, midstick_check=True, clearance_check=True, photo=False, crm: str='', description='crm_dss', die_gracefully: bool=False):
     if die_gracefully:
       # source: https://stackoverflow.com/a/31464349
       import signal
@@ -181,9 +181,8 @@ class Server:
     glana_thread.start()
 
     # start network log thread
-    if network_log:
-      network_thread = threading.Thread(target=self._main_network, daemon=True)
-      network_thread.start()
+    network_thread = threading.Thread(target=self._main_network, daemon=True)
+    network_thread.start()
 
     # register dss
     if crm:

@@ -570,7 +570,7 @@ class Hexacopter:
 
   # Monitor flying state implements state machine: on_ground -> flying <-> landed
   def _main_flying_state(self):
-    self._flying_state = 'on_ground'
+    self.flying_state = 'on_ground'
     self.logger.info(f'Flying state: {self.flying_state}')
     while True:
       # Vehicle 'on_ground' or 'landed', wait for arming and lift off
@@ -581,16 +581,16 @@ class Hexacopter:
 
       # While armed, test trasition to flying state
       while self.vehicle.armed:
-        if self._flying_state != 'flying':
+        if self.flying_state != 'flying':
           if 1 > self.get_position_lla_global().alt - start_alt:
             # Up and flying, update state
-            self._flying_state = 'flying'
+            self.flying_state = 'flying'
             self.logger.info(f'Flying state: {self.flying_state}')
         time.sleep(0.51)
 
       # Vehicle is not armed anymore
-      if self._flying_state == 'flying':
-        self._flying_state == 'landed'
+      if self.flying_state == 'flying':
+        self.flying_state == 'landed'
         self.logger.info(f'Flying state: {self.flying_state}')
 
   def set_flight_mode_and_wait(self, mode, timeout=0.5):
