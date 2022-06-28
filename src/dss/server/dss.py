@@ -176,7 +176,7 @@ class Server:
     glana_thread = threading.Thread(target=self._main_glana, daemon=True)
     glana_thread.start()
 
-    # start network log
+    # start network log thread
     if network_log:
       network_thread = threading.Thread(target=self._main_network, daemon=True)
       network_thread.start()
@@ -993,7 +993,7 @@ class Server:
 
     # Poll static infomration
     static = self._modem.get_static_info()
-    self._logger.info(f'MODEM: imei: {static["static_info"]["imei"]}, number: {static["static_info"]["number"]}')
+    self._logger.info(f'MODEM: imei: {static["imei"]}, number: {static["number"]}')
 
     # Save static information and leave out final curly bracket
     with open(log_items, 'w', encoding="utf-8") as outfile:
@@ -1003,8 +1003,8 @@ class Server:
           outfile.write(json.dumps(static['static_info']))
 
     # Wait for vehicle to arm
-    while self._hexa.is_armed():
-      time.sleep(0.5)
+  #  while self._hexa.is_armed():
+  #    time.sleep(0.5)
 
     # Enter loop to collect data until landed
     index = 0
