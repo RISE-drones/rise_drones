@@ -190,7 +190,7 @@ class Monitor():
         speed = math.sqrt(drone_data['velocity'][0]**2 + drone_data['velocity'][1]**2)
         mqtt_agent.set_speed(speed)
         if speed > 0.1 :
-          course = math.atan2(drone_data['velocity'][1], drone_data['velocity'][0])
+          course = (180/math.pi)*math.atan2(drone_data['velocity'][1], drone_data['velocity'][0])
           mqtt_agent.set_course(course)
       mqtt_agent.send_heartbeat()
       mqtt_agent.send_sensor_info()
