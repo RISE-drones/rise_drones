@@ -322,7 +322,7 @@ class Hexacopter:
     self._abort_task = value
 
   @property
-  def flying_state(self):
+  def get_flying_state(self):
     '''Get the flying state'''
     return self._flying_state
 
