@@ -1006,14 +1006,14 @@ class Server:
           outfile.write(json.dumps(static))
 
     # Wait for vehicle to arm
-  #  while not self._hexa.is_armed():
-  #    time.sleep(0.5)
+    while not self._hexa.is_armed():
+      time.sleep(0.5)
 
     # Enter loop to collect data until landed for xx seconds
     index = 0
     t_landed = 0
     t_sleep = 1
-    t_landed_threshold = 20/t_sleep # Unit seconds
+    t_landed_threshold = 15/t_sleep # Unit seconds
     while t_landed < t_landed_threshold :
         if self._hexa.flying_state == 'landed':
           t_landed += t_sleep
