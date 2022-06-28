@@ -431,7 +431,7 @@ class KeyboardClient(dss.client.Client):
           self._dss.set_vel_BODY(0.0, 0.0, 1.0, 0.0)
         elif key == 'T':
           print("arm and takeoff")
-          self.arm_and_takeoff(2.1)
+          self.arm_and_takeoff(4.0)
           self._dss.reset_dss_srtl()
         elif key == 'w':
           print("set_vel_BODY: up")
