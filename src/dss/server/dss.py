@@ -1016,7 +1016,7 @@ class Server:
     t_sleep = 1
     t_landed_threshold = 20/t_sleep # Unit seconds
     while t_landed < t_landed_threshold :
-        if self._hexa.get_flying_state == 'landed':
+        if self._hexa.flying_state == 'landed':
           t_landed += t_sleep
         else:
           t_landed = 0
