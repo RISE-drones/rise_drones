@@ -16,8 +16,11 @@ import dss.auxiliaries
 from dss.auxiliaries.config import config
 import dss.client
 
-sys.path.append('/home/pi/rise_drones_dev/modem')
-from modem import Modem
+try:
+  sys.path.append('/home/pi/rise_drones_dev/modem')
+  from modem import Modem
+except ImportError:
+  print('No module modem found. RISE proprietary code')
 
 __author__ = 'Lennart Ochel <lennart.ochel@ri.se>, Andreas Gising <andreas.gising@ri.se>, Kristoffer Bergman <kristoffer.bergman@ri.se>, Hanna Müller <hanna.muller@ri.se>, Joel Nordahl'
 __version__ = '1.1.0'
