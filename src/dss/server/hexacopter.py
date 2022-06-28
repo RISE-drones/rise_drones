@@ -590,7 +590,7 @@ class Hexacopter:
 
       # Vehicle is not armed anymore
       if self.flying_state == 'flying':
-        self.flying_state == 'landed'
+        self.flying_state = 'landed'
         self.logger.info(f'Flying state: {self.flying_state}')
 
   def set_flight_mode_and_wait(self, mode, timeout=0.5):
