@@ -293,6 +293,7 @@ class Hexacopter:
     self._thread_flight_mode.start()
 
     self._thread_flying_state = threading.Thread(target=self._main_flying_state, daemon=True)
+    self._thread_flying_state.start()
 
   @property
   def status_msg(self):
@@ -568,12 +569,12 @@ class Hexacopter:
       while not self.vehicle.armed:
         time.sleep(0.51)
       # Vehicle armed
-      start_alt = self.vehicle.location.global_frame
+      start_alt = self.get_position_lla_global().alt
 
       # While armed, test trasition to flying state
       while self.vehicle.armed:
         if self._flying_state != 'flying':
-          if 1 > self.vehicle.location.global_frame - start_alt:
+          if 1 > self.get_position_lla_global().alt - start_alt:
             # Up and flying, update state
             self._flying_state = 'flying'
             self.logger.info(f'Flying state: {self._flying_state}')

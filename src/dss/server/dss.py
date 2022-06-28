@@ -350,7 +350,7 @@ class Server:
       answer = dss.auxiliaries.zmq.nack(fcn, 'Application is not in controls')
     elif self._hexa.get_nsat() < 8:
       answer = dss.auxiliaries.zmq.nack(fcn, 'Less than 8 satellites')
-    elif self._hexa.is_flying(): # Actually it is the armed state that is tested
+    elif self._hexa.is_armed(): # Actually it is the armed state that is tested
       answer = dss.auxiliaries.zmq.nack(fcn, 'State is flying')
     elif not 2 <= to_alt <= 40:
       answer = dss.auxiliaries.zmq.nack(fcn, 'Height is out of limits')
@@ -369,7 +369,7 @@ class Server:
       answer = dss.auxiliaries.zmq.nack(fcn, descr)
     elif self._in_controls != 'APPLICATION':
       answer = dss.auxiliaries.zmq.nack(fcn, 'Application is not in controls')
-    elif not self._hexa.is_flying(): # Actually it is the armed state that is tested
+    elif not self._hexa.is_armed(): # Actually it is the armed state that is tested
       answer = dss.auxiliaries.zmq.nack(fcn, 'State is not flying')
     # Accept
     else:
@@ -1007,12 +1007,19 @@ class Server:
           outfile.write(json.dumps(static))
 
     # Wait for vehicle to arm
-  #  while self._hexa.is_armed():
+  #  while not self._hexa.is_armed():
   #    time.sleep(0.5)
 
-    # Enter loop to collect data until landed
+    # Enter loop to collect data until landed for xx seconds
     index = 0
-    while self._hexa.get_flying_state != 'landed':
+    t_landed = 0
+    t_sleep = 1
+    t_landed_threshold = 20/t_sleep # Unit seconds
+    while t_landed < t_landed_threshold :
+        if self._hexa.get_flying_state == 'landed':
+          t_landed += t_sleep
+        else:
+          t_landed = 0
         # Get dynamic info, keys: serving, neighbour and time
         log_item = self._modem.get_cell_info()
 
@@ -1032,7 +1039,7 @@ class Server:
           outfile.write(new_key)
           # write the log_item as a string under the newly added key
           outfile.write(json.dumps(log_item))
-        time.sleep(1)
+        time.sleep(t_sleep)
         index+=1
 
     # Add the final curly bracket
@@ -1045,6 +1052,7 @@ class Server:
       with open(log_file, 'w', encoding="utf-8") as outfile:
         log_str = json.dumps(big_json, indent=4)
         outfile.write(log_str)
+    self._logger.info("MODEM: Logging complete!")
 
   #############################################################################
   # THREAD *MAIN*
