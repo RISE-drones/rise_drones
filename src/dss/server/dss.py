@@ -1000,7 +1000,7 @@ class Server:
           # Manually add the key to prevent the final curly bracket
           outfile.write('{ "static_info":')
           # Write the log_item as a string under the newly added key
-          outfile.write(json.dumps(static['static_info']))
+          outfile.write(json.dumps(static))
 
     # Wait for vehicle to arm
   #  while self._hexa.is_armed():
