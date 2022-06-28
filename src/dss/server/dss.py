@@ -16,6 +16,7 @@ import dss.auxiliaries
 from dss.auxiliaries.config import config
 import dss.client
 
+# Requires a modem class
 try:
   sys.path.append('/home/pi/rise_drones_dev/modem')
   from modem import Modem
