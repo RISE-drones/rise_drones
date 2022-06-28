@@ -286,8 +286,8 @@ class Hexacopter:
     self.mode = self.get_flight_mode()
     self._expected_flight_mode = True
     self._rtl_waypoints = list()
-    self._default_speed = 5
-    self._flying_state = 'on_ground'
+    self.default_speed = 5
+    self.flying_state = 'on_ground'
 
     self._thread_flight_mode = threading.Thread(target=self._main_flight_mode, daemon=True)
     self._thread_flight_mode.start()
@@ -323,9 +323,17 @@ class Hexacopter:
     self._abort_task = value
 
   @property
-  def get_flying_state(self):
+  def flying_state(self):
     '''Get the flying state'''
     return self._flying_state
+
+  @flying_state.setter
+  def flying_state(self, value):
+    '''Get the flying state'''
+    valid_states = ['on_ground','flying','landed']
+    if not value in valid_states:
+      raise ValueError(f'{value} is not a valid flying state({valid_states})')
+    self._flying_state = value
 
   def raise_if_aborted(self):
     if self.abort_task:
@@ -348,7 +356,7 @@ class Hexacopter:
 
   # Method returns armed state. We concider armed state as flying.
   def is_flying(self) -> bool:
-    self.logger.warning(f'Depricated funciton is_flying, use get_flying_state instead')
+    self.logger.warning(f'Depricated funciton is_flying, use property flying_state instead')
     return self.vehicle.armed
 
   def is_armed(self) -> bool:
@@ -563,7 +571,7 @@ class Hexacopter:
   # Monitor flying state implements state machine: on_ground -> flying <-> landed
   def _main_flying_state(self):
     self._flying_state = 'on_ground'
-    self.logger.info(f'Flying state: {self.get_flying_state()}')
+    self.logger.info(f'Flying state: {self.flying_state}')
     while True:
       # Vehicle 'on_ground' or 'landed', wait for arming and lift off
       while not self.vehicle.armed:
@@ -577,13 +585,13 @@ class Hexacopter:
           if 1 > self.get_position_lla_global().alt - start_alt:
             # Up and flying, update state
             self._flying_state = 'flying'
-            self.logger.info(f'Flying state: {self._flying_state}')
+            self.logger.info(f'Flying state: {self.flying_state}')
         time.sleep(0.51)
 
       # Vehicle is not armed anymore
       if self._flying_state == 'flying':
         self._flying_state == 'landed'
-        self.logger.info(f'Flying state: {self._flying_state}')
+        self.logger.info(f'Flying state: {self.flying_state}')
 
   def set_flight_mode_and_wait(self, mode, timeout=0.5):
     with self._mutex_mode:
