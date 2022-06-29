@@ -335,6 +335,24 @@ class Hexacopter:
       raise ValueError(f'{value} is not a valid flying state({valid_states})')
     self._flying_state = value
 
+  @property
+  def gnss_state(self):
+    '''Get the GNSS state 0-6'''
+    return self.vehicle.gps_0.fix_type
+
+  @property
+  def gnss_state_str(self):
+    '''Get the GNSS state as a string'''
+    state = [
+    'NO_GPS',
+    'NO_FIX',
+    'GPS_OK_FIX_2D',
+    'GPS_OK_FIX_3D',
+    'GPS_OK_FIX_3D_DGPS',
+    'GPS_OK_FIX_3D_RTK_FLOAT',
+    'GPS_OK_FIX_3D_RTK_FIXED']
+    return state[self.vehicle.gps_0.fix_type]
+
   def raise_if_aborted(self):
     if self.abort_task:
       self._status_msg = 'the task was aborted'

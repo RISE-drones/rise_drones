@@ -1028,7 +1028,7 @@ class Server:
         log_item['pos']['lat'] = pos.lat
         log_item['pos']['long'] = pos.lon
         log_item['pos']['alt'] = pos.alt
-        log_item['pos']['fix_type'] = self._hexa.vehicle.gps_0.fix_type
+        log_item['pos']['fix_type'] = self._hexa.gnss_state_str
 
         # Save the log_item under a new key in the log file built line by line
         with open(log_items, 'a', encoding="utf-8") as outfile:
