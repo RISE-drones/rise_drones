@@ -24,8 +24,10 @@ Create an [issue](https://docs.github.com/en/issues/tracking-your-work-with-issu
 - Include details about you configuration and environment.
 
 ### Make Changes
- You can also suggest improvements to the code by creating your own pull requests. To do so, follow these steps:
+ You can also suggest improvements to the code by creating your own pull requests. To do so, do the following:
 
+ ### Forking and branching
+To be able to create pull requests, you need to create your own fork of the repository and then create a working branch where you commit changes. This is done by:
 1. Fork the repository.
 - Using GitHub Desktop:
   - [Getting started with GitHub Desktop](https://docs.github.com/en/desktop/installing-and-configuring-github-desktop/getting-started-with-github-desktop) will guide you through setting up Desktop.
