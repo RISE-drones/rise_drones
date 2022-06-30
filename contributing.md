@@ -36,12 +36,12 @@ Create an [issue](https://docs.github.com/en/issues/tracking-your-work-with-issu
 
 2. Create a working branch on the created fork and start with your changes!
 
-### Commit your update
+#### Commit your update
 
 Commit the changes once you are happy with them.
 
 
-### Pull Request
+#### Pull Request
 
 When you're finished with the changes, create a pull request, also known as a PR.
 - Don't forget to [link PR to issue](https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue) if you are solving one.
@@ -51,6 +51,6 @@ Once you submit your PR, a team member will review your proposal. We may ask que
 - As you update your PR and apply changes, mark each conversation as [resolved](https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/commenting-on-a-pull-request#resolving-conversations).
 - If you run into any merge issues, checkout this [git tutorial](https://lab.github.com/githubtraining/managing-merge-conflicts) to help you resolve merge conflicts and other issues.
 
-### Your PR is merged!
+#### Your PR is merged!
 
 Congratulations :tada::tada:
