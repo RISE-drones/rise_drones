@@ -135,69 +135,69 @@ class KeyboardClient(dss.client.Client):
 
     mission1 = {
       "id0": {
-          "x": 4,
-          "y": -19,
-          "z": -15,
-          "heading": 0,
-          "speed": 4,
-          "action": "take_photo"
+        "x": 4,
+        "y": -19,
+        "z": -15,
+        "heading": 0,
+        "speed": 4,
+        "action": "take_photo"
       },
       "id1": {
-          "x": 4,
-          "y": 9,
-          "z": -16,
-          "heading": "course",
-          "speed": 9,
-          "action": "take_photo"
+        "x": 4,
+        "y": 9,
+        "z": -16,
+        "heading": "course",
+        "speed": 9,
+        "action": "take_photo"
       },
       "id2": {
-          "x": 4,
-          "y": -9,
-          "z": -16,
-          "heading": "course",
-          "speed": 9,
-          "action": "take_photo"
+        "x": 4,
+        "y": -9,
+        "z": -16,
+        "heading": "course",
+        "speed": 9,
+        "action": "take_photo"
       },
       "id3": {
-          "x": 5,
-          "y": 6,
-          "z": -17,
-          "heading": "course",
-          "action": "take_photo"
+        "x": 5,
+        "y": 6,
+        "z": -17,
+        "heading": "course",
+        "action": "take_photo"
       }
     }
 
     mission2 = {
       "id0": {
-          "north": 4,
-          "east": -9,
-          "down": -15,
-          "heading": 0,
-          "speed": 3,
-          "action": "take_photo"
+        "north": 4,
+        "east": -9,
+        "down": -15,
+        "heading": 0,
+        "speed": 3,
+        "action": "take_photo"
       },
       "id1": {
-          "north": 4,
-          "east": 9,
-          "down": -16,
-          "heading": "course",
-          "speed": 4,
-          "action": "take_photo"
+        "north": 4,
+        "east": 9,
+        "down": -16,
+        "heading": "course",
+        "speed": 4,
+        "action": "take_photo"
       },
       "id2": {
-          "north": 4,
-          "east": -9,
-          "down": -16,
-          "heading": 0,
-          "speed": 2,
-          "action": "take_photo"
+        "north": 4,
+        "east": -9,
+        "down": -16,
+        "heading": 0,
+        "speed": 2,
+        "action": "take_photo"
       },
       "id3": {
-          "north": 5,
-          "east": 6,
-          "down": -17,
-          "heading": "course",
-          "action": "take_photo"
+        "north": 5,
+        "east": 6,
+        "down": -17,
+        "heading": "course",
+        "action": "take_photo"
       }
     }
 
@@ -270,7 +270,7 @@ class KeyboardClient(dss.client.Client):
           print("  [3] upload LLA mission")
           print("  [4] upload Spotscale mission")
           print("  [5] get drone with specific name")
-          print("  [6] get drone with camera capability")
+          print("  [6] get drone with LMD and RTK capability")
           print("  [7] verify who_controls the drone")
           print("  [8] Release the current drone (CRM)")
           print("  [9] Disconnect to the current drone (DSS)")
@@ -410,7 +410,7 @@ class KeyboardClient(dss.client.Client):
           grip = not grip
           if grip:
             self.load_package()
-          else :
+          else:
             self.unload_package()
         elif key == 'Q':
           print("Abort, unregister (CRM) and disconnect (DSS)")
@@ -543,10 +543,10 @@ class KeyboardClient(dss.client.Client):
           if self._dss is not None:
             print("Already connected to a drone")
           else:
-            print("Trying to connect to drone with capability: [camera]")
-            answer = self._crm.get_drone(capability='camera')
+            print("Trying to connect to drone with capability: [LMD, RTK]")
+            answer = self._crm.get_drone(capabilities=['LMD', 'RTK'])
             if not dss.auxiliaries.zmq.is_ack(answer, 'get_drone'):
-              print("No available drone with capability: [camera]")
+              print("No available drone with capability: [LMD, RTK]")
             else:
               self._drone_name = answer['id']
               time.sleep(1.0)

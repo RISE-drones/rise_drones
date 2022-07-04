@@ -17,13 +17,13 @@ import sys
 import threading
 import time
 import traceback
-
+import numpy as np
 import zmq
 
 import dss.auxiliaries
 import dss.client
 
-import numpy as np
+
 
 #--------------------------------------------------------------------#
 
@@ -188,7 +188,7 @@ class AppNoise():
         if fcn in self._commands:
           request = self._commands[fcn]['request']
           answer = request(msg)
-        else :
+        else:
           answer = dss.auxiliaries.zmq.nack(msg['fcn'], 'Request not supported')
         answer = json.dumps(answer)
         self._app_socket.send_json(answer)
@@ -252,7 +252,7 @@ class AppNoise():
           # self.keep_flying = False
           #set keep_flying flag to false when battery lower than threshold
         else:
-          _logger.warning("Topic not recognized on info link: %s",topic)
+          _logger.warning("Topic not recognized on info link: %s", topic)
       except:
         pass
     info_socket.close()
@@ -266,7 +266,7 @@ class AppNoise():
     mission = {}
     current_wp = Waypoint()
     current_wp.copy_lla(self.drone_pos)
-    for id in range(0, n_wps):
+    for wp_id in range(0, n_wps):
       (_, _, _, d_start, _, bearing) = get_3d_distance(self.start_pos, current_wp)
       if d_start <= self.delta_r_max - self.wp_dist:
         #Safe to generate a random point (meter)
@@ -276,16 +276,16 @@ class AppNoise():
         delta_dir = (bearing + 2*np.pi) % (2 * np.pi) - np.pi
       #Compute new lat lon
       d_northing = self.wp_dist*np.cos(delta_dir)
-      d_easting =  self.wp_dist*np.sin(delta_dir)
+      d_easting = self.wp_dist*np.sin(delta_dir)
       (d_lat, d_lon) = ne_to_ll(current_wp, d_northing, d_easting)
       new_lat = current_wp.lat + d_lat
       new_lon = current_wp.lon + d_lon
       # Compute new altitude
-      new_height =  current_wp.alt - self.start_pos.alt + np.random.uniform(-2.0, 2.0)
+      new_height = current_wp.alt - self.start_pos.alt + np.random.uniform(-2.0, 2.0)
       new_alt = self.start_pos.alt + min(self.height_max, max(self.height_min, new_height))
       current_wp.set_lla(new_lat, new_lon, new_alt)
 
-      id_str = "id%d" % id
+      id_str = "id%d" % wp_id
       mission[id_str] = {
         "lat" : new_lat, "lon": new_lon, "alt": new_alt, "alt_type": "amsl", "heading": "course", "speed": self.default_speed
       }
@@ -303,7 +303,7 @@ class AppNoise():
     drone_received = False
     while self.alive and not drone_received:
       # Get a drone
-      answer = self.crm.get_drone(capability='camera')
+      answer = self.crm.get_drone(capabilities=[])
       if dss.auxiliaries.zmq.is_nack(answer):
         _logger.debug("No drone available - sleeping for 2 seconds")
         time.sleep(2.0)
@@ -320,7 +320,7 @@ class AppNoise():
   def task_launch_drone(self, height):
     #Initialize drone
     self.drone.try_set_init_point()
-    self.drone.set_geofence(max(2,self.height_min-2), self.height_max+2, self.delta_r_max+10)
+    self.drone.set_geofence(max(2, self.height_min-2), self.height_max+2, self.delta_r_max+10)
     self.drone.await_controls()
     self.drone.arm_and_takeoff(height)
     self.drone.reset_dss_srtl()
@@ -352,9 +352,9 @@ class AppNoise():
         break
       except dss.auxiliaries.exception.AbortTask:
         # PILOT took controls
-        (currentWP, _) = self.drone.get_currentWP()
+        (current_wp, _) = self.drone.get_currentWP()
         # Prepare to continue the mission
-        start_wp = currentWP
+        start_wp = current_wp
         _logger.info("Pilot took controls, awaiting PILOT action")
         self.drone.await_controls()
         _logger.info("PILOT gave back controls")

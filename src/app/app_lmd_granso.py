@@ -102,6 +102,8 @@ class AppLmd():
     self.height_min = 8.0
     #take-off height
     self.takeoff_height = 12.0
+    #Clearance landing
+    self.clearance_landing = False
 
 
 
@@ -151,7 +153,7 @@ class AppLmd():
         if fcn in self._commands:
           request = self._commands[fcn]['request']
           answer = request(msg)
-        else :
+        else:
           answer = dss.auxiliaries.zmq.nack(msg['fcn'], 'Request not supported')
         answer = json.dumps(answer)
         self._app_socket.send_json(answer)
@@ -208,7 +210,7 @@ class AppLmd():
         elif topic == 'battery':
           _logger.debug("Not implemented yet...")
         else:
-          _logger.warning("Topic not recognized on info link: %s",topic)
+          _logger.warning("Topic not recognized on info link: %s", topic)
       except:
         pass
     info_socket.close()
@@ -219,7 +221,7 @@ class AppLmd():
     drone_received = False
     while self.alive and not drone_received:
       # Get a drone
-      answer = self.crm.get_drone(capability='camera')
+      answer = self.crm.get_drone(capabilities=['LMD'])
       if dss.auxiliaries.zmq.is_nack(answer):
         _logger.debug("No drone available - sleeping for 2 seconds")
         time.sleep(2.0)
@@ -264,9 +266,9 @@ class AppLmd():
         break
       except dss.auxiliaries.exception.AbortTask:
         # PILOT took controls
-        (currentWP, _) = self.drone.get_currentWP()
+        (current_wp, _) = self.drone.get_currentWP()
         # Prepare to continue the mission
-        start_wp = currentWP
+        start_wp = current_wp
         _logger.info("Pilot took controls, awaiting PILOT action")
         self.drone.await_controls()
         _logger.info("PILOT gave back controls")

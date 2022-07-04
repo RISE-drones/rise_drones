@@ -26,9 +26,9 @@ import threading
 import time
 import traceback
 import uuid
-
-import zmq
 import datetime
+import zmq
+
 import dss.auxiliaries
 import dss.client
 
@@ -111,6 +111,7 @@ class AppLmd():
     self.positions_to_visit = [pickup_wp, dropoff_wp, return_wp]
     # Missions
     self.missions = []
+    self.uas_id = None
     #geofence parameters
     self.delta_r_max = 300.0
     self.height_max = 30.0
@@ -121,7 +122,7 @@ class AppLmd():
     self.start_pos_received = False
     #USSP stuff
     self.ussp = dss.client.UsspClientLib(app_id, _context)
-    self.ussp.connect(ussp_ip="localhost", req_port=5555, pub_port=5556, sub_port=5557 )
+    self.ussp.connect(ussp_ip="localhost", req_port=5555, pub_port=5556, sub_port=5557)
     #TODO add valid operator ID
     self.operator_id = "SWE33DummyOperatorID"
 
@@ -173,7 +174,7 @@ class AppLmd():
         if fcn in self._commands:
           request = self._commands[fcn]['request']
           answer = request(msg)
-        else :
+        else:
           answer = dss.auxiliaries.zmq.nack(msg['fcn'], 'Request not supported')
         answer = json.dumps(answer)
         self._app_socket.send_json(answer)
@@ -233,7 +234,7 @@ class AppLmd():
         elif topic == 'battery':
           _logger.debug("Not implemented yet...")
         else:
-          _logger.warning("Topic not recognized on info link: %s",topic)
+          _logger.warning("Topic not recognized on info link: %s", topic)
       except:
         pass
     info_socket.close()
@@ -261,9 +262,9 @@ class AppLmd():
       time.sleep(0.5)
     current_position = copy.deepcopy(self.start_pos)
     self.uas_id = str(uuid.uuid1())
-    for position in self.positions_to_visit :
+    for position in self.positions_to_visit:
       positions = [current_position, position]
-      (plan_id, delay) = self.ussp.request_plan(self.operator_id, self.uas_id,  epsg=4979, positions=positions, takeoff_time=takeoff_time, speed=self.cruise_speed, max_speed=15.0, ascend_rate=2.0, descend_rate=1.0)
+      (plan_id, delay) = self.ussp.request_plan(self.operator_id, self.uas_id, epsg=4979, positions=positions, takeoff_time=takeoff_time, speed=self.cruise_speed, max_speed=15.0, ascend_rate=2.0, descend_rate=1.0)
       if plan_id is None or delay is None:
         raise dss.auxiliaries.exception.Error
       time.sleep(delay)
@@ -294,7 +295,7 @@ class AppLmd():
     drone_received = False
     while self.alive and not drone_received:
       # Get a drone
-      answer = self.crm.get_drone(capability='camera')
+      answer = self.crm.get_drone(capabilities=['LMD'])
       if dss.auxiliaries.zmq.is_nack(answer):
         _logger.debug("No drone available - sleeping for 2 seconds")
         time.sleep(2.0)

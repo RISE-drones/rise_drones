@@ -13,13 +13,11 @@ import sys
 import threading
 import time
 import traceback
-
+import numpy as np
 import zmq
 
 import dss.auxiliaries
 import dss.client
-
-import numpy as np
 
 #--------------------------------------------------------------------#
 
@@ -275,7 +273,7 @@ class AppVerify():
     drone_received = False
     while self.alive and not drone_received:
       # Get a drone
-      answer = self.crm.get_drone(capability='camera')
+      answer = self.crm.get_drone(capabilities=[])
       if dss.auxiliaries.zmq.is_nack(answer):
         _logger.debug("No drone available - sleeping for 2 seconds")
         time.sleep(2.0)
@@ -289,7 +287,7 @@ class AppVerify():
     # Setup info stream to DSS
     self.setup_dss_info_stream()
     self.drone.try_set_init_point()
-    self.drone.set_geofence(max(2,self.height_min-2), self.height_max+2, self.delta_r_max+10)
+    self.drone.set_geofence(max(2, self.height_min-2), self.height_max+2, self.delta_r_max+10)
 
   def task_await_init_point(self):
     # Wait until info stream up and running
@@ -308,17 +306,17 @@ class AppVerify():
     mission = {}
     current_wp = Waypoint()
     current_wp.copy_lla(self.drone_pos)
-    for id in range(0, n_wps):
+    for wp_id in range(0, n_wps):
       if random:
         delta_dir = np.random.uniform(-np.pi, np.pi)
       else:
-        if id == 0:
+        if wp_id == 0:
           delta_dir = 225.0*np.pi/180
-        elif id == 1:
+        elif wp_id == 1:
           delta_dir = 315.0*np.pi/180
       #Compute new lat lon
       d_northing = self.wp_dist*np.cos(delta_dir)
-      d_easting =  self.wp_dist*np.sin(delta_dir)
+      d_easting = self.wp_dist*np.sin(delta_dir)
       (d_lat, d_lon) = ne_to_ll(current_wp, d_northing, d_easting)
       new_lat = current_wp.lat + d_lat
       new_lon = current_wp.lon + d_lon
@@ -327,7 +325,7 @@ class AppVerify():
       new_height = self.wp_height
       current_wp.set_lla(new_lat, new_lon, new_height)
 
-      id_str = "id%d" % id
+      id_str = "id%d" % wp_id
       mission[id_str] = {
         "lat" : new_lat, "lon": new_lon, "alt": new_height, "alt_type": "relative", "heading": "course", "speed": self.default_speed
       }
@@ -353,9 +351,9 @@ class AppVerify():
         break
       except dss.auxiliaries.exception.AbortTask:
         # PILOT took controls
-        (currentWP, _) = self.drone.get_currentWP()
+        (current_wp, _) = self.drone.get_currentWP()
         # Prepare to continue the mission
-        start_wp = currentWP
+        start_wp = current_wp
         _logger.info("Pilot took controls, awaiting PILOT action")
         self.drone.await_controls()
         _logger.info("PILOT gave back controls")

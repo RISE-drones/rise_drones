@@ -59,10 +59,10 @@ class CRM:
   def delStaleClients(self):
     return self._socket.send_and_receive({'id': self._app_id, 'fcn': 'delStaleClients'})
 
-  def get_drone(self, capability=None, force=None):
+  def get_drone(self, capabilities=None, force=None):
     msg = {'fcn': 'get_drone', 'id': self._app_id}
-    if capability is not None :
-      msg['capability'] = capability
+    if capabilities is not None :
+      msg['capabilities'] = capabilities
     if force is not None :
       msg['force'] = force
     return self._socket.send_and_receive(msg)

@@ -236,7 +236,7 @@ class Template():
     cursor_index = 7
 
     # Get a drone
-    answer = self.crm.get_drone(capability='camera')
+    answer = self.crm.get_drone(capabilities=['RGB'])
     if dss.auxiliaries.zmq.is_nack(answer):
       _logger.error(f'Did not receive a drone: {dss.auxiliaries.zmq.get_nack_reason(answer)}')
       return

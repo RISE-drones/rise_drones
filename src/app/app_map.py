@@ -255,7 +255,7 @@ class PhotoMission():
   def main(self, mission):
 
     # Get a drone
-    answer = self.crm.get_drone(capability='camera')
+    answer = self.crm.get_drone(capabilities=['RGB'])
     if dss.auxiliaries.zmq.is_nack(answer):
       _logger.error('Did not receive a drone: %s', dss.auxiliaries.zmq.get_nack_reason(answer))
       return

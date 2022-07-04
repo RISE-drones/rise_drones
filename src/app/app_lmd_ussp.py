@@ -93,6 +93,7 @@ class AppLmd():
     self.drone_lla_lock = threading.Lock()
     self.uas_id = None
     self.operator_id = dss.auxiliaries.config.config['app_lmd_ussp']['operator_id']
+    self.clearance_landing = False
 
     # The application sockets
     # Use ports depending on subnet used to pass RISE firewall
@@ -177,7 +178,7 @@ class AppLmd():
         if fcn in self._commands:
           request = self._commands[fcn]['request']
           answer = request(msg)
-        else :
+        else:
           answer = dss.auxiliaries.zmq.nack(msg['fcn'], 'Request not supported')
         answer = json.dumps(answer)
         self._app_socket.send_json(answer)
@@ -268,7 +269,7 @@ class AppLmd():
       _logger.debug("Waiting for the drone to stream its current position")
       time.sleep(0.5)
     current_position = copy.deepcopy(self.start_pos)
-    for wp_type, waypoint in self.mission.items() :
+    for wp_type, waypoint in self.mission.items():
       position = Waypoint(waypoint["lat"], waypoint["lon"], waypoint["alt"])
       positions = [current_position, position]
       (plan_id, delay) = self.ussp.request_plan(self.operator_id, self.uas_id, epsg=4979, positions=positions, takeoff_time=takeoff_time, speed=self.horizontal_speed, max_speed=15.0, ascend_rate=2.0, descend_rate=1.0)
@@ -301,7 +302,7 @@ class AppLmd():
     drone_received = False
     while self.alive and not drone_received:
       # Get a drone
-      answer = self.crm.get_drone(capability='camera')
+      answer = self.crm.get_drone(capabilities=['LMD'])
       if dss.auxiliaries.zmq.is_nack(answer):
         _logger.debug("No drone available - sleeping for 2 seconds")
         time.sleep(2.0)
@@ -349,9 +350,9 @@ class AppLmd():
         break
       except dss.auxiliaries.exception.AbortTask:
         # PILOT took controls
-        (currentWP, _) = self.drone.get_currentWP()
+        (current_wp, _) = self.drone.get_currentWP()
         # Prepare to continue the mission
-        start_wp = currentWP
+        start_wp = current_wp
         _logger.info("Pilot took controls, awaiting PILOT action")
         self.drone.await_controls()
         _logger.info("PILOT gave back controls")
@@ -389,6 +390,7 @@ class AppLmd():
       #wait for reaching waypoint
       time.sleep(1.0)
       #Await landing clearance?
+      self.await_clearance_landing()
       #Land
       self.drone.land()
       # End plan
