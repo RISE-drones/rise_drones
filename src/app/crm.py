@@ -285,10 +285,11 @@ class CRM:
       drone_found = False
       n_capabilities = 100
       for id_, client in self._clients.items():
+        client_capabilities = set({capa.casefold(): capa for capa in client['capabilities']})
         # Try to find a suitable drone. Pick the one with least amount of total capabilities that satisfies the requirements.
-        if client['owner'] == 'crm' and client['type'] == 'dss' and capabilities.issubset(client['capabilities']) and len(client['capabilities']) < n_capabilities and (self._now - client['timestamp']) < 20:
+        if client['owner'] == 'crm' and client['type'] == 'dss' and capabilities.issubset(client_capabilities) and len(client_capabilities) < n_capabilities and (self._now - client['timestamp']) < 20:
           drone_found = True
-          n_capabilities = len(client['capabilities'])
+          n_capabilities = len(client_capabilities)
           dss_id = id_
       if drone_found:
         self._task_queue.add(self.task_set_owner, dss_id, requester_id)
@@ -459,7 +460,7 @@ class CRM:
       self._clients[id_]['port'] = msg['port']
       self._clients[id_]['desc'] = msg['desc']
       #Store capabilities as a set for easy comparison. The casefold makes sure that the comparison is not case sensitive
-      self._clients[id_]['capabilities'] = set({capa.casefold(): capa for capa in msg['capabilities']})
+      self._clients[id_]['capabilities'] = msg['capabilities']
       self._clients[id_]['timestamp'] = self._now
     else:
       # delete dss if one with same ip exists
@@ -475,7 +476,7 @@ class CRM:
 
       id_ = '{type}{index:03d}'.format(type=msg['type'], index=self._nextIndex)
       self._nextIndex += 1
-      self._clients[id_] = {'name': msg['name'], 'type': msg['type'], 'capabilities': set({capa.casefold(): capa for capa in msg['capabilities']}), 'desc': msg['desc'], 'owner': 'crm', 'ip': msg['ip'], 'port': msg['port'], 'timestamp': self._now}
+      self._clients[id_] = {'name': msg['name'], 'type': msg['type'], 'capabilities': msg['capabilities'], 'desc': msg['desc'], 'owner': 'crm', 'ip': msg['ip'], 'port': msg['port'], 'timestamp': self._now}
 
     if msg['type'] == 'dss':
       self._task_queue.add(self.task_start_battery_stream, id_)
