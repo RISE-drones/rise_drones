@@ -77,10 +77,10 @@ class CRM:
   # TODO: launch_dss
   # TODO: launch_sitl
 
-  def register(self, app_ip, app_port, type='da'):
+  def register(self, app_ip, app_port, type='da', capabilities=[]):
     assert self._app_id != 'root', '"root" cannot get registered as application'
 
-    answer = self._socket.send_and_receive({'fcn': 'register', 'name': self._app_name, 'desc': self._desc, 'type': type, 'id': self._app_id, 'ip': app_ip, 'port': app_port})
+    answer = self._socket.send_and_receive({'fcn': 'register', 'name': self._app_name, 'desc': self._desc, 'type': type, 'capabilities': capabilities, 'id': self._app_id, 'ip': app_ip, 'port': app_port})
     if dss.auxiliaries.zmq.is_nack(answer):
       raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer))
 

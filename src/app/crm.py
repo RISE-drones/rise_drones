@@ -262,30 +262,39 @@ class CRM:
     # check arguments
     if not all(key in msg for key in ['id']):
       return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id} is mandatory')
-    if not any(key in msg for key in ['force', 'capability']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: either force or capability must be used')
+    if not any(key in msg for key in ['force', 'capabilities']):
+      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: either force or capabilities must be used')
 
     requester_id = msg['id']
     if requester_id not in self._clients:
-      return dss.auxiliaries.zmq.nack(fcn, 'unknown client id')
+      return dss.auxiliaries.zmq.nack(fcn, 'unknown requestor id')
 
     if 'force' in msg:
       force = msg['force']
       if force not in self._clients:
-        return dss.auxiliaries.zmq.nack(fcn, 'unknown client id')
+        return dss.auxiliaries.zmq.nack(fcn, 'unknown forced id')
       if self._clients[force]['owner'] != 'crm':
-        return dss.auxiliaries.zmq.nack(fcn, 'client not available')
+        return dss.auxiliaries.zmq.nack(fcn, 'forced id not available')
       if self._now - self._clients[force]['timestamp'] > 20: #seconds
-        return dss.auxiliaries.zmq.nack(fcn, 'client is stale')
+        return dss.auxiliaries.zmq.nack(fcn, 'forced id is stale')
       self._task_queue.add(self.task_set_owner, force, requester_id)
       return dss.auxiliaries.zmq.ack(fcn, {'id': force, 'ip': self._clients[force]['ip'], 'port': self._clients[force]['port']})
     else:
+      #Get capabilities as a set for easy comparison. The casefold makes sure that the comparison is not case sensitive
+      capabilities = set({capa.casefold(): capa for capa in msg['capabilities']})
+      drone_found = False
+      n_capabilities = 100
       for id_, client in self._clients.items():
-        if client['owner'] == 'crm' and client['type'] == 'dss' and (self._now - client['timestamp']) < 20:
-          self._task_queue.add(self.task_set_owner, id_, requester_id)
-          return dss.auxiliaries.zmq.ack(fcn, {'id': id_, 'ip': self._clients[id_]['ip'], 'port': self._clients[id_]['port']})
+        # Try to find a suitable drone. Pick the one with least amount of total capabilities that satisfies the requirements.
+        if client['owner'] == 'crm' and client['type'] == 'dss' and capabilities.issubset(client['capabilities']) and len(client['capabilities']) < n_capabilities and (self._now - client['timestamp']) < 20:
+          drone_found = True
+          n_capabilities = len(client['capabilities'])
+          dss_id = id_
+      if drone_found:
+        self._task_queue.add(self.task_set_owner, dss_id, requester_id)
+        return dss.auxiliaries.zmq.ack(fcn, {'id': dss_id, 'ip': self._clients[dss_id]['ip'], 'port': self._clients[dss_id]['port']})
 
-    return dss.auxiliaries.zmq.nack(fcn, 'no available drone')
+    return dss.auxiliaries.zmq.nack(fcn, 'no available drone with requested capabilities')
 
   def _request_get_info(self, msg: dict) -> dict:
     fcn = dss.auxiliaries.zmq.get_fcn(msg)
@@ -422,8 +431,8 @@ class CRM:
     fcn = dss.auxiliaries.zmq.get_fcn(msg)
 
     # check arguments
-    if not all(key in msg for key in ['name', 'desc', 'type', 'ip', 'port']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {name, desc, type, ip, port} are mandatory')
+    if not all(key in msg for key in ['name', 'desc', 'type', 'ip', 'port', 'capabilities']):
+      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {name, desc, type, ip, port, capabilities} are mandatory')
 
     if not dss.auxiliaries.zmq.valid_ip(msg['ip']):
       return dss.auxiliaries.zmq.nack(fcn, f'bad ip: {msg["ip"]}')
@@ -449,6 +458,8 @@ class CRM:
       self._clients[id_]['ip'] = msg['ip']
       self._clients[id_]['port'] = msg['port']
       self._clients[id_]['desc'] = msg['desc']
+      #Store capabilities as a set for easy comparison. The casefold makes sure that the comparison is not case sensitive
+      self._clients[id_]['capabilities'] = set({capa.casefold(): capa for capa in msg['capabilities']})
       self._clients[id_]['timestamp'] = self._now
     else:
       # delete dss if one with same ip exists
@@ -464,7 +475,7 @@ class CRM:
 
       id_ = '{type}{index:03d}'.format(type=msg['type'], index=self._nextIndex)
       self._nextIndex += 1
-      self._clients[id_] = {'name': msg['name'], 'type': msg['type'], 'desc': msg['desc'], 'owner': 'crm', 'ip': msg['ip'], 'port': msg['port'], 'timestamp': self._now}
+      self._clients[id_] = {'name': msg['name'], 'type': msg['type'], 'capabilities': set({capa.casefold(): capa for capa in msg['capabilities']}), 'desc': msg['desc'], 'owner': 'crm', 'ip': msg['ip'], 'port': msg['port'], 'timestamp': self._now}
 
     if msg['type'] == 'dss':
       self._task_queue.add(self.task_start_battery_stream, id_)
