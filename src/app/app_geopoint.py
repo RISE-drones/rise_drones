@@ -24,6 +24,7 @@ import time
 import traceback
 
 import zmq
+from pathlib import Path
 
 import dss.auxiliaries
 import dss.client
@@ -230,9 +231,10 @@ class AppGeo():
       if gnss_state >= gnss_state_threshold:
         #Store LLA at POI.json
         poi = {"lat": drone_data["lat"], "lon": drone_data["lon"], "alt": drone_data["alt"], "gnss_state": gnss_state}
-        with open('poi.txt', 'w') as file:
+        poi_fp = Path.cwd().joinpath('poi.txt')
+        with open(poi_fp, 'w') as file:
           self.mission = json.dump(poi, file, indent=2)
-        print("Point of interest stored at poi.txt")
+        print(f"Point of interest stored at {poi_fp}")
       else:
         print(f"GNSS state not high enough. Current state: {gnss_state}")
     else:
@@ -241,7 +243,7 @@ class AppGeo():
 #--------------------------------------------------------------------#
 # Main function
   def main(self):
-    # Connect to a delivery drone
+    # Connect to a RTK drone
     capabilities = ["RTK"]
     self.connect_to_drone(capabilities)
     while self.alive:
