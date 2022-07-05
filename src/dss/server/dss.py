@@ -899,7 +899,7 @@ class Server:
       #print("Attitude callback sending log data:", json_msg)
     # LLA
     elif att_name == 'location.global_frame':
-      msg = {'lat': msg.lat, 'lon': msg.lon, 'alt': msg.alt, 'heading': vehicle.heading, 'velocity': vehicle.velocity, 'agl': -1 }
+      msg = {'lat': msg.lat, 'lon': msg.lon, 'alt': msg.alt, 'heading': vehicle.heading, 'velocity': vehicle.velocity, 'gnss_state': self._hexa.gnss_state, 'agl': -1 }
       self._pub_socket.publish('LLA', msg)
     # NED
     elif att_name == 'location.local_frame':
