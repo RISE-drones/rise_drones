@@ -201,14 +201,14 @@ class AppGeo():
     # Setup info stream to DSS
     self.setup_dss_info_stream()
 
-  def display_gnss_level(self):
+  def display_gnss_state(self):
     if self.drone_data:
       self.drone_data_lock.acquire()
       try:
-        gnss_level = self.drone_data["gnss_level"]
-        print(f"GNSS level : {gnss_level}")
+        gnss_state = self.drone_data["gnss_state"]
+        print(f"GNSS state : {gnss_state}")
       except KeyError:
-        print("GNSS level is not known")
+        print("GNSS state is not known")
       self.drone_data_lock.release()
     else:
       print("No LLA stream received yet")
@@ -216,25 +216,25 @@ class AppGeo():
 
 
 #--------------------------------------------------------------------#
-  def store_geopoint(self, gnss_level_threshold):
+  def store_geopoint(self, gnss_state_threshold):
     if self.drone_data:
       self.drone_data_lock.acquire()
       try:
         drone_data = self.drone_data
-        gnss_level = drone_data["gnss_level"]
+        gnss_state = drone_data["gnss_state"]
       except KeyError:
-        print("GNSS level is not known")
+        print("GNSS state is not known")
         self.drone_data_lock.release()
         return
       self.drone_data_lock.release()
-      if gnss_level >= gnss_level_threshold:
+      if gnss_state >= gnss_state_threshold:
         #Store LLA at POI.json
-        poi = {"lat": drone_data["lat"], "lon": drone_data["lon"], "alt": drone_data["alt"], "gnss_level": gnss_level}
+        poi = {"lat": drone_data["lat"], "lon": drone_data["lon"], "alt": drone_data["alt"], "gnss_state": gnss_state}
         with open('poi.txt', 'w') as file:
           self.mission = json.dump(poi, file, indent=2)
         print("Point of interest stored at poi.txt")
       else:
-        print(f"GNSS level not high enough. Current level: {gnss_level}")
+        print(f"GNSS state not high enough. Current state: {gnss_state}")
     else:
       print("No LLA stream received yet")
 
@@ -245,11 +245,11 @@ class AppGeo():
     capabilities = ["RTK"]
     self.connect_to_drone(capabilities)
     while self.alive:
-      user_input = input("Enter command [store, gnss_level, quit]: ")
+      user_input = input("Enter command [store, gnss_state, quit]: ")
       if user_input == "store":
-        self.store_geopoint(gnss_level_threshold=6)
-      elif user_input == "gnss_level":
-        self.display_gnss_level()
+        self.store_geopoint(gnss_state_threshold=6)
+      elif user_input == "gnss_state":
+        self.display_gnss_state()
       elif user_input == "quit":
         self._alive = False
       else:
