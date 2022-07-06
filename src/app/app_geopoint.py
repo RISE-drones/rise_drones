@@ -83,6 +83,12 @@ class AppGeo():
     _logger.info('App %s listening on %s:%s', self.crm.app_id, self._app_socket.ip, self._app_socket.port)
     _logger.info('App_lmd registered with CRM: %s', self.crm.app_id)
 
+    self._commands = {'store':      {'description': 'Store geopoint at current location', 'fcn': self.store_geopoint},
+                      'gnss_state': {'description': 'Print current gnss_state', 'fcn': self.display_gnss_state},
+                      'quit'      : {'description': 'Quit program', 'fcn': self.quit_application},
+                      'help'      : {'description': 'List available commands', 'fcn': self.display_help}}
+
+    self._gnss_state_threshold = 6
     self.drone_data = None
     self.drone_data_lock = threading.Lock()
 
@@ -201,7 +207,7 @@ class AppGeo():
 
     # Setup info stream to DSS
     self.setup_dss_info_stream()
-
+#--------------------------------------------------------------------#
   def display_gnss_state(self):
     if self.drone_data:
       self.drone_data_lock.acquire()
@@ -213,11 +219,15 @@ class AppGeo():
       self.drone_data_lock.release()
     else:
       print("No LLA stream received yet")
-
-
-
 #--------------------------------------------------------------------#
-  def store_geopoint(self, gnss_state_threshold):
+  def display_help(self):
+    for key, value in self._commands.items():
+      print(f"{key}: {value['description']}")
+#--------------------------------------------------------------------#
+  def quit_application(self):
+    self._alive = False
+#--------------------------------------------------------------------#
+  def store_geopoint(self):
     if self.drone_data:
       self.drone_data_lock.acquire()
       try:
@@ -228,7 +238,7 @@ class AppGeo():
         self.drone_data_lock.release()
         return
       self.drone_data_lock.release()
-      if gnss_state >= gnss_state_threshold:
+      if gnss_state >= self._gnss_state_threshold:
         #Store LLA at POI.json
         poi = {"lat": drone_data["lat"], "lon": drone_data["lon"], "alt": drone_data["alt"], "gnss_state": gnss_state}
         poi_fp = Path.cwd().joinpath('poi.txt')
@@ -247,15 +257,12 @@ class AppGeo():
     capabilities = ["RTK"]
     self.connect_to_drone(capabilities)
     while self.alive:
-      user_input = input("Enter command [store, gnss_state, quit]: ")
-      if user_input == "store":
-        self.store_geopoint(gnss_state_threshold=6)
-      elif user_input == "gnss_state":
-        self.display_gnss_state()
-      elif user_input == "quit":
-        self._alive = False
+      user_input = input("Enter command: ")
+      if user_input in self._commands:
+        current_fcn = self._commands[user_input]['fcn']
+        current_fcn()
       else:
-        print("Unknown command")
+        print("Unknown command. Type help to list available commands")
 
 
     # Read input from user
