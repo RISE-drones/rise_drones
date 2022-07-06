@@ -221,6 +221,7 @@ class AppGeo():
       print("No LLA stream received yet")
 #--------------------------------------------------------------------#
   def display_help(self):
+    print("***The current commands are available***")
     for key, value in self._commands.items():
       print(f"{key}: {value['description']}")
 #--------------------------------------------------------------------#
