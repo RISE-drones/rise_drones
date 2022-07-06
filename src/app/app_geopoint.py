@@ -38,7 +38,7 @@ __status__ = 'development'
 
 #--------------------------------------------------------------------#
 
-_logger = logging.getLogger('dss.app_lmd')
+_logger = logging.getLogger('dss.app_geopoint')
 _context = zmq.Context()
 
 #--------------------------------------------------------------------#
@@ -83,12 +83,14 @@ class AppGeo():
     _logger.info('App %s listening on %s:%s', self.crm.app_id, self._app_socket.ip, self._app_socket.port)
     _logger.info('App_lmd registered with CRM: %s', self.crm.app_id)
 
-    self._commands = {'store':      {'description': 'Store geopoint at current location', 'fcn': self.store_geopoint},
-                      'gnss_state': {'description': 'Print current gnss_state', 'fcn': self.display_gnss_state},
-                      'quit'      : {'description': 'Quit program', 'fcn': self.quit_application},
-                      'help'      : {'description': 'List available commands', 'fcn': self.display_help}}
+    self._input_commands = {'connect':    {'description': 'Connect to a drone', 'fcn': self.connect_to_drone},
+                            'store':      {'description': 'Store geopoint at current location', 'fcn': self.store_geopoint},
+                            'gnss_state': {'description': 'Print current gnss_state', 'fcn': self.display_gnss_state},
+                            'quit'      : {'description': 'Quit program', 'fcn': self.quit_application},
+                            'help'      : {'description': 'List available commands', 'fcn': self.display_help}}
 
     self._gnss_state_threshold = 6
+    self.drone_received = False
     self.drone_data = None
     self.drone_data_lock = threading.Lock()
 
@@ -190,16 +192,39 @@ class AppGeo():
     _logger.info("Stopped thread and closed info socket")
 
 #------------------------TASKS----------------------------------------#
-  def connect_to_drone(self, capabilities):
-    drone_received = False
-    while self.alive and not drone_received:
+  def connect_to_drone(self):
+    if self.drone_received:
+      _logger.info("Already connected to a drone!")
+      return
+    user_input = input("Use forced ID? [yes/no]:")
+    if user_input.lower() == "yes":
+      capabilities = None
+      forced_id = input("Specify name of dss to connect to:")
+    else:
+      capabilities = ['RTK']
+      forced_id = None
+    failed_count = 0
+    while self.alive and not self.drone_received and failed_count < 10:
       # Get a drone
-      answer = self.crm.get_drone(capabilities=capabilities)
-      if dss.auxiliaries.zmq.is_nack(answer):
-        _logger.info(f"No drone available with capabilities: {capabilities} - sleeping for 2 seconds")
-        time.sleep(2.0)
+      if capabilities:
+        answer = self.crm.get_drone(capabilities=capabilities)
+        if dss.auxiliaries.zmq.is_nack(answer):
+          failed_count += 1
+          _logger.info(f"No drone available with capabilities: {capabilities} - sleeping for 2 seconds")
+          time.sleep(2.0)
+        else:
+          self.drone_received = True
       else:
-        drone_received = True
+        answer = self.crm.get_drone(force=forced_id)
+        if dss.auxiliaries.zmq.is_nack(answer):
+          failed_count += 1
+          _logger.info(f"Not possible to connect to drone with name: {forced_id} - sleeping for 2 seconds")
+          time.sleep(2.0)
+        else:
+          self.drone_received = True
+    if not self.drone_received:
+      _logger.info("Not possible to connect to a drone, check c2m2 for status and try again....")
+
 
     # Connect to the drone, set app_id in socket
     self.drone.connect(answer['ip'], answer['port'], app_id=self.crm.app_id)
@@ -213,17 +238,17 @@ class AppGeo():
       self.drone_data_lock.acquire()
       try:
         gnss_state = self.drone_data["gnss_state"]
-        print(f"GNSS state : {gnss_state}")
+        _logger.info(f"GNSS state : {gnss_state}")
       except KeyError:
-        print("GNSS state is not known")
+        _logger.info("GNSS state is not known")
       self.drone_data_lock.release()
     else:
-      print("No LLA stream received yet")
+      _logger.info("No LLA stream received yet")
 #--------------------------------------------------------------------#
   def display_help(self):
-    print("***The current commands are available***")
-    for key, value in self._commands.items():
-      print(f"{key}: {value['description']}")
+    _logger.info("***The available commands***")
+    for key, value in self._input_commands.items():
+      _logger.info(f"{key}: {value['description']}")
 #--------------------------------------------------------------------#
   def quit_application(self):
     self._alive = False
@@ -235,7 +260,7 @@ class AppGeo():
         drone_data = self.drone_data
         gnss_state = drone_data["gnss_state"]
       except KeyError:
-        print("GNSS state is not known")
+        _logger.info("GNSS state is not known")
         self.drone_data_lock.release()
         return
       self.drone_data_lock.release()
@@ -245,30 +270,22 @@ class AppGeo():
         poi_fp = Path.cwd().joinpath('poi.txt')
         with open(poi_fp, 'w') as file:
           self.mission = json.dump(poi, file, indent=2)
-        print(f"Point of interest stored at {poi_fp}")
+        _logger.info(f"Point of interest stored at {poi_fp}")
       else:
-        print(f"GNSS state not high enough. Current state: {gnss_state}")
+        _logger.info(f"GNSS state not high enough. Current state: {gnss_state}")
     else:
-      print("No LLA stream received yet")
+      _logger.info("No LLA stream received yet. Make sure that you are connected to a drone")
 
 #--------------------------------------------------------------------#
 # Main function
   def main(self):
-    # Connect to a RTK drone
-    capabilities = ["RTK"]
-    self.connect_to_drone(capabilities)
     while self.alive:
       user_input = input("Enter command: ")
-      if user_input in self._commands:
-        current_fcn = self._commands[user_input]['fcn']
+      if user_input.lower() in self._input_commands:
+        current_fcn = self._input_commands[user_input.lower()]['fcn']
         current_fcn()
       else:
-        print("Unknown command. Type help to list available commands")
-
-
-    # Read input from user
-
-
+        _logger.info("Unknown command. Type help to list available commands")
 
 #--------------------------------------------------------------------#
 def _main():
@@ -276,10 +293,9 @@ def _main():
   parser = argparse.ArgumentParser(description='APP "app_noise"', allow_abbrev=False, add_help=False)
   parser.add_argument('-h', '--help', action='help', help=argparse.SUPPRESS)
   parser.add_argument('--app_ip', type=str, help='ip of the app', required=True)
-  parser.add_argument('--id', type=str, default=None, help='id of this app_noise instance if started by crm')
+  parser.add_argument('--id', type=str, default=None, help='id of this app instance if started by crm')
   parser.add_argument('--crm', type=str, help='<ip>:<port> of crm', required=True)
   parser.add_argument('--log', type=str, default='debug', help='logging threshold')
-  parser.add_argument('--owner', type=str, help='id of the instance controlling app_noise - not used in this use case')
   parser.add_argument('--stdout', action='store_true', help='enables logging to stdout')
   args = parser.parse_args()
 
