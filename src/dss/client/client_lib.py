@@ -46,6 +46,7 @@ class Client:
     self._thread = None
     self._timeout = timeout
     self._in_controls = False
+    self._app_abort = False
 
 
   @property
@@ -59,8 +60,17 @@ class Client:
     return self._app_id
 
   @property
+  def app_abort(self):
+    '''Returns protected _app_abort flag'''
+    return self._app_abort
+
+  @app_abort.setter
+  def app_abort(self, value):
+    self._app_abort = value
+
+  @property
   def operator(self):
-    '''Retruns protected _in_controls for backward compability'''
+    '''Returns protected _in_controls for backwards compatibility'''
     self._logger.warning("Use of deprecated property 'operator', use in_controls")
     return self._in_controls
 
@@ -94,6 +104,10 @@ class Client:
       raise dss.auxiliaries.exception.AbortTask("Controls where taken")
 
     if not self._alive:
+      raise dss.auxiliaries.exception.AbortTask()
+
+    if self.app_abort:
+      self.app_abort = False
       raise dss.auxiliaries.exception.AbortTask()
 
   def abort(self, msg=None, rtl=False):
