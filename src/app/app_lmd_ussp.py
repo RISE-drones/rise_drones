@@ -25,7 +25,7 @@ import traceback
 import datetime
 import copy
 import uuid
-
+import math
 import zmq
 
 import dss.auxiliaries
@@ -74,9 +74,13 @@ class AppLmd():
 
     # load mission from file
     with open(mission, encoding='utf-8') as handle:
-      self.mission = json.load(handle)
-      if "source_file" in self.mission:
-        self.mission.pop("source_file")
+      self.wps_to_visit = json.load(handle)
+      if "source_file" in self.wps_to_visit:
+        self.wps_to_visit.pop("source_file")
+
+
+    for wp in self.wps_to_visit.values():
+      wp['status'] = "pending"
     self.start_wp = start_wp
     # Missions
     self.missions = []
@@ -87,13 +91,14 @@ class AppLmd():
     #speed parameters
     self.horizontal_speed = dss.auxiliaries.config.config['app_lmd_ussp']['horizontal_speed']
     #
-    self.drone_data = {"pos": Waypoint(), "time": 0.0}
+    self.drone_data = {"pos": Waypoint(), "time": 0.0, "heading": 0.0, "velocity": [0.0, 0.0, 0.0]}
     self.start_pos = Waypoint()
     self.start_pos_received = False
     self.drone_lla_lock = threading.Lock()
     self.uas_id = None
     self.operator_id = dss.auxiliaries.config.config['app_lmd_ussp']['operator_id']
     self.clearance_landing = False
+    self.plan_withdrawn = False
 
     # The application sockets
     # Use ports depending on subnet used to pass RISE firewall
@@ -126,9 +131,10 @@ class AppLmd():
     self.ussp_req_port = dss.auxiliaries.config.config['app_lmd_ussp']['ussp_req_port']
     self.ussp_pub_port = dss.auxiliaries.config.config['app_lmd_ussp']['ussp_pub_port']
     self.ussp_sub_port = dss.auxiliaries.config.config['app_lmd_ussp']['ussp_sub_port']
-    _logger.info('App')
+    _logger.info(f'App LMD conneting to USSP: {self.ussp_ip}')
     self.ussp = dss.client.UsspClientLib(app_id, _context)
     self.ussp.connect(self.ussp_ip, self.ussp_req_port, self.ussp_pub_port, self.ussp_sub_port)
+    self.application_state = "idle"
 
 
 
@@ -232,8 +238,10 @@ class AppLmd():
         (topic, msg) = info_socket.recv()
         if topic == "LLA":
           self.drone_lla_lock.acquire()
-          self.drone_data["pos"].set_lla(msg['lat'], msg['lon'], msg['alt'])
           self.drone_data["time"] = datetime.datetime.utcnow()
+          self.drone_data["pos"].set_lla(msg['lat'], msg['lon'], msg['alt'])
+          self.drone_data["heading"] = msg['heading']
+          self.drone_data["velocity"] = msg['velocity']
           self.drone_lla_lock.release()
           if not self.start_pos_received:
             self.start_pos.set_lla(msg['lat'], msg['lon'], msg['alt'])
@@ -253,58 +261,100 @@ class AppLmd():
     # Assume operator at initial point
     self.ussp.update_nrid_operator_location(self.uas_id, self.start_pos.lat, self.start_pos.lon)
     # Set accuracies
-    self.ussp.update_nrid_accuracies(self.uas_id, 4, 4, 11, 0)
+    self.ussp.update_nrid_accuracies(self.uas_id, t_acc=4, alt_acc=4, h_acc=11, speed_acc=0)
     while self.alive :
       self.drone_lla_lock.acquire()
-      self.ussp.update_nrid_state(self.uas_id, self.drone_data["time"], self.drone_data["pos"].lat, self.drone_data["pos"].lon, self.drone_data["pos"].alt, height=self.drone_data["pos"].alt-self.start_pos.alt, bearing=0.0, speed=0.0, vert_speed=0.0)
+      drone_data = self.drone_data
       self.drone_lla_lock.release()
+      speed = math.sqrt(drone_data['velocity'][0]**2 + drone_data['velocity'][1]**2)
+      if speed > 0.1:
+        bearing = (180/math.pi)*math.atan2(drone_data['velocity'][1], drone_data['velocity'][0])
+      else:
+        bearing = drone_data['heading']
+      height = self.drone_data["pos"].alt-self.start_pos.alt
+      self.ussp.update_nrid_state(self.uas_id, drone_data["time"], drone_data["pos"].lat, drone_data["pos"].lon, drone_data["pos"].alt, height=height, bearing=bearing, speed=speed, vert_speed=drone_data['velocity'][2])
       self.ussp.publish_nrid_msg(self.uas_id)
       time.sleep(1.0)
 
-  # GENERATE USSP MISSIONS FROM MISSION FILE
+  def _ussp_subscriber_thread(self):
+    self.ussp.subscribe_to_topic(self.uas_id)
+    while self.alive:
+      try:
+        (_, msg) = self.ussp.receive_subscribe_data()
+        if "message" in msg:
+          if msg["message"] == "plan withdrawn":
+            _logger.warning("Plan withdrawn received from the USSP. Trying to replan!")
+            self.plan_withdrawn = True
+            self.drone.app_abort = True
+          else:
+            _logger.info("Unknown message from USSP received")
+      except:
+        pass
+
+  def update_wps_to_visit(self):
+    self.wps_to_visit = {}
+    for mission in self.missions:
+      #Cancel pending missions..
+      if mission["status"] == "pending":
+        self.ussp.cancel_plan(mission["plan ID"])
+      #Add all waypoints associated to a mission that is not ended
+      if mission["status"] != "ended":
+        #Add the end position to the list of wps to visit
+        self.wps_to_visit[mission["type"]] = {"lat": mission["final pos"].lat, "lon": mission["final pos"].lon, "alt": mission["final pos"].alt, "status": mission["status"]}
+    #Reset missions list and plan withdrawn flag
+    self.plan_withdrawn = False
+    self.missions = {}
+  # Generate missions based on positions to visit
   def generate_ussp_lmd_missions(self):
     # Request flight authorizations from the USSP
     takeoff_time = datetime.datetime.utcnow() + datetime.timedelta(minutes=1)
-    while self.alive and not self.start_pos_received:
-      _logger.debug("Waiting for the drone to stream its current position")
-      time.sleep(0.5)
-    current_position = copy.deepcopy(self.start_pos)
-    for wp_type, waypoint in self.mission.items():
+    current_position = copy.deepcopy(self.drone_data["pos"])
+    for wp_type, waypoint in self.wps_to_visit.items():
       position = Waypoint(waypoint["lat"], waypoint["lon"], waypoint["alt"])
+      use_altitude = False
+      #Check if the drone is currently in the air (plan withdrawn received)
+      if waypoint["status"] == "running":
+        use_altitude = True
+        takeoff_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=10)
+        position.alt = self.ussp.query_ground_height(position.lat, position.lon)
       positions = [current_position, position]
-      (plan_id, delay) = self.ussp.request_plan(self.operator_id, self.uas_id, epsg=4979, positions=positions, takeoff_time=takeoff_time, speed=self.horizontal_speed, max_speed=15.0, ascend_rate=2.0, descend_rate=1.0)
+      (plan_id, delay) = self.ussp.request_plan(self.operator_id, self.uas_id, epsg=4979, use_altitude=use_altitude, positions=positions, takeoff_time=takeoff_time, speed=self.horizontal_speed, max_speed=15.0, ascend_rate=2.0, descend_rate=1.0)
       if plan_id is None or delay is None:
         raise dss.auxiliaries.exception.Error
       time.sleep(delay)
       (status, plan) = self.ussp.get_plan(plan_id)
+      _logger.info(f"status from get plan: {status}")
       if status != "authorized":
         raise dss.auxiliaries.exception.Error
       #Accept plan
       if not self.ussp.accept_plan(plan_id):
         raise dss.auxiliaries.exception.Error
       #Convert to internal representation
-      wp_mission = self.ussp.transform_plan(plan)
+      wp_mission = self.ussp.transform_plan(plan, use_altitude)
       #save mission
       mission = {}
-      mission["takeoff_height"] = min(plan[1]["position"][2] - plan[0]["position"][2], 30.0)
+      mission["final pos"] = position
       mission["wp_mission"] = wp_mission
       mission["takeoff_time"] = datetime.datetime.fromisoformat(plan[0]["time"])
       mission["plan ID"] = plan_id
       mission["type"] = wp_type
-      print(f"takeoff_height: {mission['takeoff_height']}, wp_mission : {wp_mission}")
+      mission["status"] = waypoint["status"]
+      if mission["status"] == "pending":
+        mission["takeoff_height"] = min(plan[1]["position"][2] - plan[0]["position"][2], 30.0)
+        _logger.info(f"takeoff_height: {mission['takeoff_height']}, wp_mission : {wp_mission}")
       self.missions.append(mission)
       #Update takeoff time
       current_position = position
       takeoff_time = datetime.datetime.fromisoformat(plan[-1]["time"]) + datetime.timedelta(seconds=plan[-1]["time margin"]) + datetime.timedelta(seconds=10)
 
 #------------------------TASKS----------------------------------------#
-  def connect_to_drone(self):
+  def connect_to_drone(self, capabilities):
     drone_received = False
     while self.alive and not drone_received:
       # Get a drone
-      answer = self.crm.get_drone(capabilities=['LMD'])
+      answer = self.crm.get_drone(capabilities=capabilities)
       if dss.auxiliaries.zmq.is_nack(answer):
-        _logger.debug("No drone available - sleeping for 2 seconds")
+        _logger.debug("No drone with LMD capability available - sleeping for 2 seconds")
         time.sleep(2.0)
       else:
         drone_received = True
@@ -318,11 +368,11 @@ class AppLmd():
 
     self.uas_id = str(uuid.uuid1())
 
-  def initialize_mission(self, mission, reset_geofence=True):
+  def initialize_waypoints(self, waypoints, reset_geofence=True):
     self.drone.try_set_init_point()
     if reset_geofence:
       self.drone.set_geofence(self.height_min, self.height_max, self.delta_r_max)
-    self.drone.upload_mission_LLA(mission)
+    self.drone.upload_mission_LLA(waypoints)
 
   def launch_drone(self, takeoff_height, reset_dss_srtl=True):
     self.drone.await_controls()
@@ -337,7 +387,7 @@ class AppLmd():
       self.drone.raise_if_aborted()
       time.sleep(1.0)
 
-  def execute_mission(self):
+  def fly_waypoints(self):
     start_wp = 0
     while True:
       try:
@@ -349,15 +399,19 @@ class AppLmd():
           _logger.info("Fly mission was nacked %s", nack.msg)
         break
       except dss.auxiliaries.exception.AbortTask:
-        # PILOT took controls
-        (current_wp, _) = self.drone.get_currentWP()
-        # Prepare to continue the mission
-        start_wp = current_wp
-        _logger.info("Pilot took controls, awaiting PILOT action")
-        self.drone.await_controls()
-        _logger.info("PILOT gave back controls")
-        # Try to continue mission
-        continue
+        if self.plan_withdrawn:
+          #USSP plan withdrawn received - need to replan!
+          break
+        else:
+          # PILOT took controls
+          (current_wp, _) = self.drone.get_currentWP()
+          # Prepare to continue the mission
+          start_wp = current_wp
+          _logger.info("Pilot took controls, awaiting PILOT action")
+          self.drone.await_controls()
+          _logger.info("PILOT gave back controls")
+          # Try to continue mission
+          continue
       else:
         # Mission is completed
         break
@@ -367,42 +421,66 @@ class AppLmd():
 # Main function
   def main(self):
     # Connect to a delivery drone
-    self.connect_to_drone()
-    # Generate USSP missions
-    self.generate_ussp_lmd_missions()
+    capabilities=['LMD']
+    self.connect_to_drone(capabilities)
+    # Start USSP subscriber thread
+    ussp_sub_thread = threading.Thread(target=self._ussp_subscriber_thread, daemon=True)
+    ussp_sub_thread.start()
+    #Reset DSS SRTL and geofence only once
     reset_dss_srtl = True
     reset_geofence = True
+    while self.alive and not self.start_pos_received:
+      _logger.debug("Waiting for the drone to stream its current position")
+      time.sleep(0.5)
     # Start streaming NRID
     nrid_thread = threading.Thread(target=self._stream_nrid, daemon=True)
     nrid_thread.start()
-    for mission in self.missions:
-      self.initialize_mission(mission["wp_mission"], reset_geofence)
-      #Wait for takeoff time
-      while datetime.datetime.utcnow() + datetime.timedelta(seconds=10) < mission["takeoff_time"]:
-        _logger.info(f"Waiting for takeoff, time remaining: {mission['takeoff_time']-datetime.datetime.utcnow()}")
-        time.sleep(0.5)
-      # activate mission
-      self.ussp.activate_plan(mission["plan ID"])
-      # Launch drone
-      self.launch_drone(mission["takeoff_height"], reset_dss_srtl)
-      # Execute missions
-      self.execute_mission()
-      #wait for reaching waypoint
-      time.sleep(1.0)
-      #Await landing clearance?
-      self.await_clearance_landing()
-      #Land
-      self.drone.land()
-      # End plan
-      self.ussp.end_plan(mission["plan ID"])
-      # Check wp type
-      if mission["type"] == "drop off":
-        self.drone.unload_package()
-      elif mission["type"] == "pickup":
-        self.drone.load_package()
-      # Do not update dss srtl and geofence
-      reset_dss_srtl = False
-      reset_geofence = False
+    return_reached = False
+    self.application_state = "planning"
+    while not return_reached:
+      # Generate USSP missions
+      self.generate_ussp_lmd_missions()
+      self.application_state = "executing"
+      for mission in self.missions:
+        self.initialize_waypoints(mission["wp_mission"], reset_geofence)
+        #Wait for takeoff time
+        while datetime.datetime.utcnow() + datetime.timedelta(seconds=10) < mission["takeoff_time"]:
+          _logger.info(f"Waiting to start mission execution, time remaining: {mission['takeoff_time']-datetime.datetime.utcnow()}")
+          time.sleep(0.5)
+        # activate mission
+        self.ussp.activate_plan(mission["plan ID"])
+        # Launch drone
+        if mission["status"] == "pending":
+          self.launch_drone(mission["takeoff_height"], reset_dss_srtl)
+        # Fly to waypoints
+        self.fly_waypoints()
+        if self.plan_withdrawn:
+          mission["status"] = "running"
+          self.application_state = "planning"
+          self.ussp.end_plan(mission["plan ID"])
+          self.update_wps_to_visit()
+          break
+        #wait for reaching waypoint
+        time.sleep(1.0)
+        #Await landing clearance?
+        self.await_clearance_landing()
+        #Land
+        self.drone.land()
+        # End plan
+        self.ussp.end_plan(mission["plan ID"])
+        mission["status"] = "ended"
+        # Check wp type
+        if mission["type"] == "drop off":
+          self.drone.unload_package()
+        elif mission["type"] == "pickup":
+          self.drone.load_package()
+        elif mission["type"] == "return":
+          self.application_state = "idle"
+          return_reached = True
+        # Do not update dss srtl and geofence
+        reset_dss_srtl = False
+        reset_geofence = False
+
 
 
 #--------------------------------------------------------------------#
