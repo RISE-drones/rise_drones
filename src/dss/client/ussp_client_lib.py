@@ -49,6 +49,13 @@ class UsspClientLib:
   def connect(self, ussp_ip, req_port, pub_port, sub_port, timeout=2000):
     self._ussp_client = dss.client.UsspClientApi(self._context, self._app_id, ussp_ip, req_port, pub_port, sub_port, timeout)
 
+  def subscribe_to_topic(self, topic):
+    self._ussp_client.subscribe_to_topic(topic)
+
+  def receive_subscribe_data(self):
+    topic, msg = self._ussp_client.receive_subscribe_data()
+    return topic, msg
+
   def initialize_nrid_msg(self, operator_id, uas_id):
     '''
     Initialize a template NRID message with correct operator ID and UAS ID
@@ -79,14 +86,14 @@ class UsspClientLib:
     }
 
   @staticmethod
-  def transform_plan(plan):
+  def transform_plan(plan, use_altitude):
     '''
     Transforms a plan received from the USSP to a format that is compatible with the DSS
     '''
     wp_id = 0
     wp_mission = {}
     cruise_height = plan[1]["position"][2] - plan[0]["position"][2]
-    if cruise_height > 30.0 :
+    if cruise_height > 30.0 or use_altitude:
       start_idx = 1
     else :
       start_idx = 2
@@ -137,12 +144,17 @@ class UsspClientLib:
     answer = self._ussp_client.query_ground_height(lat, lon, epsg)
     return answer["height"]
 
-  def request_plan(self, operator_id:string, uas_id:string, epsg:int, positions, takeoff_time:datetime.datetime, speed:float, max_speed:float, ascend_rate:float, descend_rate:float):
+  def request_plan(self, operator_id:string, uas_id:string, epsg:int, use_altitude:bool, positions, takeoff_time:datetime.datetime, speed:float, max_speed:float, ascend_rate:float, descend_rate:float):
     plan = []
     for position in positions:
-      node = {"type": "2D path",
-              "position": [position.lon, position.lat]}
+      if use_altitude:
+        node = {"type": "3D path",
+                "position": [position.lon, position.lat, position.alt]}
+      else:
+        node = {"type": "2D path",
+                "position": [position.lon, position.lat]}
       plan.append(node)
+    print(plan)
     request = {"operator ID": operator_id,
                "UAS ID": uas_id,
                "EPSG": epsg,
