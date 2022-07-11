@@ -22,9 +22,8 @@ import sys
 import threading
 import time
 import traceback
-
-import zmq
 from pathlib import Path
+import zmq
 
 import dss.auxiliaries
 import dss.client
@@ -269,7 +268,7 @@ class AppGeo():
         poi = {"lat": drone_data["lat"], "lon": drone_data["lon"], "alt": drone_data["alt"], "gnss_state": gnss_state}
         poi_fp = Path.cwd().joinpath('poi.txt')
         with open(poi_fp, 'w') as file:
-          self.mission = json.dump(poi, file, indent=2)
+          json.dump(poi, file, indent=2)
         _logger.info(f"Point of interest stored at {poi_fp}")
       else:
         _logger.info(f"GNSS state not high enough. Current state: {gnss_state}")

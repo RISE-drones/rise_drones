@@ -264,7 +264,7 @@ class AppLmd():
     self.uas_id = str(uuid.uuid1())
     for position in self.positions_to_visit:
       positions = [current_position, position]
-      (plan_id, delay) = self.ussp.request_plan(self.operator_id, self.uas_id, epsg=4979, positions=positions, takeoff_time=takeoff_time, speed=self.cruise_speed, max_speed=15.0, ascend_rate=2.0, descend_rate=1.0)
+      (plan_id, delay) = self.ussp.request_plan(self.operator_id, self.uas_id, epsg=4979, use_altitude=False, positions=positions, takeoff_time=takeoff_time, speed=self.cruise_speed, max_speed=15.0, ascend_rate=2.0, descend_rate=1.0)
       if plan_id is None or delay is None:
         raise dss.auxiliaries.exception.Error
       time.sleep(delay)
@@ -275,7 +275,7 @@ class AppLmd():
       if not self.ussp.accept_plan(plan_id):
         raise dss.auxiliaries.exception.Error
       #Convert to internal representation
-      wp_mission = self.ussp.transform_plan(plan)
+      wp_mission = self.ussp.transform_plan(plan, use_altitude=False)
       #save mission
       mission = {}
       mission["takeoff_height"] = plan[1]["position"][2] - plan[0]["position"][2]

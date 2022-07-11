@@ -135,9 +135,11 @@ class Monitor():
 
   def _request_get_drone_data(self, msg):
     answer = dss.auxiliaries.zmq.ack(msg['fcn'])
-    self.drone_data_lock.acquire()
+    for key in self.drone_data_locks:
+      self.drone_data_locks[key].acquire()
     answer['data'] = self.drone_data
-    self.drone_data_lock.release()
+    for key in self.drone_data_locks:
+      self.drone_data_locks[key].release()
     return answer
 
 #--------------------------------------------------------------------#
