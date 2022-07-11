@@ -79,19 +79,19 @@ jobs:
         notifications="${notifications//$'\r'/'%0D'}"
         [ -z ${notifications} ] || notifications="### Refactoring and conventions :bulb:%0A\`\`\`%0A"${notifications}"%0A\`\`\`"
         echo "::set-output name=body::$notifications"
-    - id: pytest
-      name: Test the code
-      run: |
-        pytest -rf > pytest.log
-    - id: pytest-errors
-      name: Prepare pytest error messages
-      if: ${{ github.event_name == 'pull_request' && failure() && steps.pytest.outcome == 'failure' }}
-      run: |
-        error="$(sed '1,/short\ test\ summary\ info/d' pytest.log)"
-        error="${error//'%'/'%25'}"
-        error="${error//$'\n'/'%0A'}"
-        error="${error//$'\r'/'%0D'}"
-        echo "::set-output name=body::$error"
+#    - id: pytest
+#      name: Test the code
+#      run: |
+#       pytest -rf > pytest.log
+#    - id: pytest-errors
+#      name: Prepare pytest error messages
+#      if: ${{ github.event_name == 'pull_request' && failure() && steps.pytest.outcome == 'failure' }}
+#      run: |
+#        error="$(sed '1,/short\ test\ summary\ info/d' pytest.log)"
+#        error="${error//'%'/'%25'}"
+#        error="${error//$'\n'/'%0A'}"
+#       error="${error//$'\r'/'%0D'}"
+#       echo "::set-output name=body::$error"
 #    - name: Report pytest errors
 #      if: ${{ github.event_name == 'pull_request' && failure() && steps.pytest.outcome == 'failure' }}
 #      uses: peter-evans/create-or-update-comment@v1
