@@ -354,7 +354,7 @@ class AppLmd():
       # Get a drone
       answer = self.crm.get_drone(capabilities=capabilities)
       if dss.auxiliaries.zmq.is_nack(answer):
-        _logger.debug("No drone with LMD capability available - sleeping for 2 seconds")
+        _logger.debug(f"No drone with {capabilities} available - sleeping for 2 seconds")
         time.sleep(2.0)
       else:
         drone_received = True
