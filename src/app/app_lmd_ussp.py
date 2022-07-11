@@ -249,7 +249,7 @@ class AppLmd():
         elif topic == 'battery':
           _logger.debug("Not implemented yet...")
         else:
-          _logger.warning("Topic not recognized on info link: %s",topic)
+          _logger.warning("Topic not recognized on info link: %s", topic)
       except:
         pass
     info_socket.close()
@@ -262,7 +262,7 @@ class AppLmd():
     self.ussp.update_nrid_operator_location(self.uas_id, self.start_pos.lat, self.start_pos.lon)
     # Set accuracies
     self.ussp.update_nrid_accuracies(self.uas_id, t_acc=4, alt_acc=4, h_acc=11, speed_acc=0)
-    while self.alive :
+    while self.alive:
       self.drone_lla_lock.acquire()
       drone_data = self.drone_data
       self.drone_lla_lock.release()
@@ -402,16 +402,15 @@ class AppLmd():
         if self.plan_withdrawn:
           #USSP plan withdrawn received - need to replan!
           break
-        else:
-          # PILOT took controls
-          (current_wp, _) = self.drone.get_currentWP()
-          # Prepare to continue the mission
-          start_wp = current_wp
-          _logger.info("Pilot took controls, awaiting PILOT action")
-          self.drone.await_controls()
-          _logger.info("PILOT gave back controls")
-          # Try to continue mission
-          continue
+        # Otherwise - PILOT took controls
+        (current_wp, _) = self.drone.get_currentWP()
+        # Prepare to continue the mission
+        start_wp = current_wp
+        _logger.info("Pilot took controls, awaiting PILOT action")
+        self.drone.await_controls()
+        _logger.info("PILOT gave back controls")
+        # Try to continue mission
+        continue
       else:
         # Mission is completed
         break
@@ -421,7 +420,7 @@ class AppLmd():
 # Main function
   def main(self):
     # Connect to a delivery drone
-    capabilities=['LMD']
+    capabilities = ['LMD']
     self.connect_to_drone(capabilities)
     # Start USSP subscriber thread
     ussp_sub_thread = threading.Thread(target=self._ussp_subscriber_thread, daemon=True)
