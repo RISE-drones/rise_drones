@@ -5,7 +5,7 @@ on:
     branches:
       - master
       - main
-  pull_request_target:
+  pull_request:
     branches:
       - master
       - main
@@ -37,11 +37,11 @@ jobs:
         pylint $(git ls-files '*.py') > pylint.log || pylint-exit $? -efail
     - id: changed-files
       name: Look for changed files
-      if: ${{ github.event_name == 'pull_request_target' && failure() && steps.pylint.outcome == 'failure' }}
+      if: ${{ github.event_name == 'pull_request' && failure() && steps.pylint.outcome == 'failure' }}
       uses: jitterbit/get-changed-files@v1
     - id: pylint-errors
       name: Prepare pylint error messages
-      if: ${{ github.event_name == 'pull_request_target' && failure() && steps.pylint.outcome == 'failure' }}
+      if: ${{ github.event_name == 'pull_request' && failure() && steps.pylint.outcome == 'failure' }}
       run: |
         error="$(grep -e '^E[0-9]\+' -e '^W0101' -e '^W0104' -e '^W0311' -e '^W0611' pylint.log)"
         error="${error//'%'/'%25'}"
@@ -51,7 +51,7 @@ jobs:
         echo "::set-output name=body::$error"
     - id: pylint-warnings
       name: Prepare pylint warnings
-      if: ${{ github.event_name == 'pull_request_target' && failure() && steps.pylint.outcome == 'failure' }}
+      if: ${{ github.event_name == 'pull_request' && failure() && steps.pylint.outcome == 'failure' }}
       run: |
         touch pylint-warning.log
         for changed_file in ${{ steps.changed-files.outputs.all }}; do
@@ -66,7 +66,7 @@ jobs:
         echo "::set-output name=body::$warning"
     - id: pylint-notifications
       name: Prepare pylint notifications
-      if: ${{ github.event_name == 'pull_request_target' && failure() && steps.pylint.outcome == 'failure' }}
+      if: ${{ github.event_name == 'pull_request' && failure() && steps.pylint.outcome == 'failure' }}
       run: |
         touch pylint-notifications.log
         for changed_file in ${{ steps.changed-files.outputs.all }}; do
@@ -85,34 +85,34 @@ jobs:
         pytest -rf > pytest.log
     - id: pytest-errors
       name: Prepare pytest error messages
-      if: ${{ github.event_name == 'pull_request_target' && failure() && steps.pytest.outcome == 'failure' }}
+      if: ${{ github.event_name == 'pull_request' && failure() && steps.pytest.outcome == 'failure' }}
       run: |
         error="$(sed '1,/short\ test\ summary\ info/d' pytest.log)"
         error="${error//'%'/'%25'}"
         error="${error//$'\n'/'%0A'}"
         error="${error//$'\r'/'%0D'}"
         echo "::set-output name=body::$error"
-    - name: Report pytest errors
-      if: ${{ github.event_name == 'pull_request_target' && failure() && steps.pytest.outcome == 'failure' }}
-      uses: peter-evans/create-or-update-comment@v1
-      with:
-        issue-number: ${{github.event.pull_request_target.number}}
-        body: |
-          ### Some tests failed :confused:
-          ```
-          ${{ steps.pytest-errors.outputs.body }}
-          ```
-    - id: pytest-stats
-      name: Prepare pytest stats
-      if: ${{ github.event_name == 'pull_request_target' }}
-      run: |
-        stats="$(tail -n1 pytest.log | sed 's/\=//g')"
-        echo "::set-output name=body::$stats"
-    - name: Report success
-      if: ${{ github.event_name == 'pull_request_target' }}
-      uses: peter-evans/create-or-update-comment@v1
-      with:
-        issue-number: ${{github.event.pull_request_target.number}}
-        body: |
-          Test results: ${{ steps.pytest-stats.outputs.body }}
-          ${{ steps.pylint-rating.outputs.body }} :rocket: :heart:
+#    - name: Report pytest errors
+#      if: ${{ github.event_name == 'pull_request' && failure() && steps.pytest.outcome == 'failure' }}
+#      uses: peter-evans/create-or-update-comment@v1
+#      with:
+#        issue-number: ${{github.event.pull_request.number}}
+#        body: |
+#         ### Some tests failed :confused:
+#          ```
+#          ${{ steps.pytest-errors.outputs.body }}
+#          ```
+#    - id: pytest-stats
+#      name: Prepare pytest stats
+#      if: ${{ github.event_name == 'pull_request' }}
+#      run: |
+#        stats="$(tail -n1 pytest.log | sed 's/\=//g')"
+#        echo "::set-output name=body::$stats"
+#    - name: Report success
+#      if: ${{ github.event_name == 'pull_request' }}
+#      uses: peter-evans/create-or-update-comment@v1
+#      with:
+#        issue-number: ${{github.event.pull_request.number}}
+#        body: |
+#          Test results: ${{ steps.pytest-stats.outputs.body }}
+#          ${{ steps.pylint-rating.outputs.body }} :rocket: :heart:
