@@ -94,7 +94,8 @@ class AppLmd():
   # load mission from file
     with open(mission, encoding='utf-8') as handle:
       self.mission = json.load(handle)
-      self.mission.pop("source_file")
+      if "source_file" in self.mission:
+        self.mission.pop("source_file")
     self.start_wp = start_wp
     #geofence parameters
     self.delta_r_max = 120.0

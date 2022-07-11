@@ -31,6 +31,9 @@ class UsspClientApi:
     self._pub_socket.close()
     self._sub_socket.close()
 
+  def subscribe_to_topic(self, topic):
+    self._sub_socket.subscribe(topic)
+
   def receive_subscribe_data(self):
     topic, msg = self._sub_socket.recv()
     return topic, msg
